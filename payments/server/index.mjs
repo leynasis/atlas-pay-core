@@ -14,6 +14,10 @@ export function createApplication({
   now,
   qrEncoder,
   developmentOrigin,
+  labStatus = async () => {
+    const { getLabStatus } = await import("../lab/status.mjs");
+    return getLabStatus();
+  },
 } = {}) {
   const store = new InvoiceStore(dbPath);
   const service = new PaymentService({
@@ -30,6 +34,7 @@ export function createApplication({
     staticDir,
     qrEncoder,
     developmentOrigin,
+    labStatus,
   });
   return {
     server,

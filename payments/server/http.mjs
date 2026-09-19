@@ -125,6 +125,7 @@ export function createHttpServer({
   staticDir,
   qrEncoder,
   developmentOrigin,
+  labStatus,
 }) {
   if (developmentOrigin && developmentOrigin !== "http://127.0.0.1:5173")
     throw new Error(
@@ -152,6 +153,15 @@ export function createHttpServer({
       const url = new URL(req.url, `http://${req.headers.host}`);
       const path = decodeURIComponent(url.pathname);
       const key = req.headers["idempotency-key"];
+      if (req.method === "GET" && path === "/api/lab/status") {
+        if (!labStatus)
+          throw new AppError(
+            "LAB_UNAVAILABLE",
+            "The network lab is unavailable.",
+            503,
+          );
+        return json(res, 200, await labStatus());
+      }
       if (req.method === "GET" && path === "/api/status")
         return json(res, 200, await service.status());
       if (req.method === "GET" && path === "/api/invoices")

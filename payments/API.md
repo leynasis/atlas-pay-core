@@ -18,3 +18,21 @@ The frontend uses same-origin fetch only, never receives RPC credentials or wall
 Refund reconciliation also returns `refundAmount` and `additionalReceivedAfterRefund` decimal strings, `requiresReview` boolean and nullable `reviewReason`. The UI must prominently flag review-required invoices even if the original refund is confirmed. A conflicted/abandoned refund or additional funds after a refund requires manual wallet inspection; no automatic second refund is attempted. The local pay helper rejects expired invoices, while late external regtest receipts are still recorded.
 
 For frontend development only, launch the API with `ATLAS_DEV_ORIGIN=http://127.0.0.1:5173` (`npm run start:dev`) and Vite with `npm run dev`. The exception is restricted to that exact origin; production-build local serving uses the default same-origin checks.
+
+## Network lab monitoring
+
+`GET /api/lab/status` returns the separate local named-devnet snapshot. It never
+changes the payment application's regtest chain. Top-level fields include
+`name`, `mode`, `localOnly`, `configured`, `observedAt`, `expectedNodes`,
+`onlineNodes`, `synchronized`, `commonHeight`, `commonTip`, `genesisHash`,
+`devnetGenesisHash`, `capabilities`, and `nodes`.
+
+Each node reports `id`, `label`, `online`, `height`, `bestBlockHash`, `peerCount`,
+`peers`, `identityVerified`, and a sanitized `error`. Unavailable measurements
+are null. Synchronization requires matching observed heights and block hashes;
+it is a sampled status, not a consensus guarantee. A network outage is not
+reported as zero-height consensus or a successful payment.
+
+There are no web endpoints for lab signing, mining, starting or stopping nodes.
+The monitor must not return RPC credentials, wallet keys, raw configuration or
+runtime filesystem paths. Existing Host restrictions and no-store headers apply.

@@ -26,11 +26,15 @@ import {
   FlaskConical,
 } from "lucide-react";
 import "./styles.css";
+import NetworkLab from "./NetworkLab.jsx";
 
 const words = {
   en: {
     workspace: "Merchant workspace",
     overview: "Overview",
+    networkNav: "Network",
+    labNav: "Local network lab",
+    labBanner: "Independent devnet · Local test coins only",
     invoices: "Invoices",
     support: "How it works",
     local: "LOCAL WORKSPACE",
@@ -174,6 +178,9 @@ const words = {
   ru: {
     workspace: "Кабинет продавца",
     overview: "Обзор",
+    networkNav: "Сеть",
+    labNav: "Локальная лаборатория сети",
+    labBanner: "Отдельная devnet · Только локальные тестовые монеты",
     invoices: "Счета",
     support: "Как это работает",
     local: "ЛОКАЛЬНЫЙ КАБИНЕТ",
@@ -864,10 +871,35 @@ function App() {
     [selected, setSelected] = useState(null),
     [filter, setFilter] = useState("all"),
     [search, setSearch] = useState(""),
-    [page, setPage] = useState("overview"),
+    [page, setPage] = useState(() =>
+      ["network", "invoices", "help"].includes(location.hash.slice(1))
+        ? location.hash.slice(1)
+        : "overview",
+    ),
     [mining, setMining] = useState(false),
     [toast, setToast] = useState(null),
     [checkoutInvoice, setCheckoutInvoice] = useState(null);
+  function navigatePage(next) {
+    setPage(next);
+    history.replaceState(
+      null,
+      "",
+      location.pathname +
+        location.search +
+        (next === "overview" ? "" : "#" + next),
+    );
+  }
+  useEffect(() => {
+    function hashChanged() {
+      setPage(
+        ["network", "invoices", "help"].includes(location.hash.slice(1))
+          ? location.hash.slice(1)
+          : "overview",
+      );
+    }
+    window.addEventListener("hashchange", hashChanged);
+    return () => window.removeEventListener("hashchange", hashChanged);
+  }, []);
   const toastTimer = useRef(null);
   const checkoutId = location.pathname.match(/^\/pay\/([^/]+)\/?$/)?.[1];
   const onToast = useCallback((message, bad = false) => {
@@ -1048,7 +1080,7 @@ function App() {
         <nav aria-label={t.menu}>
           <button
             className={page === "overview" ? "active" : ""}
-            onClick={() => setPage("overview")}
+            onClick={() => navigatePage("overview")}
           >
             <LayoutDashboard size={19} />
             {t.overview}
@@ -1056,15 +1088,24 @@ function App() {
           </button>
           <button
             className={page === "invoices" ? "active" : ""}
-            onClick={() => setPage("invoices")}
+            onClick={() => navigatePage("invoices")}
           >
             <ReceiptText size={19} />
             {t.invoices}
             <span className="nav-count">{invoices.length}</span>
           </button>
           <button
+            className={page === "network" ? "active" : ""}
+            onClick={() => navigatePage("network")}
+            title={t.networkNav}
+            aria-label={t.networkNav}
+          >
+            <Blocks size={19} />
+            {t.networkNav}
+          </button>
+          <button
             className={page === "help" ? "active" : ""}
-            onClick={() => setPage("help")}
+            onClick={() => navigatePage("help")}
           >
             <CircleHelp size={19} />
             {t.support}
@@ -1096,16 +1137,43 @@ function App() {
           <div className="breadcrumb">
             <span>{t.workspace}</span>
             <ChevronRight size={13} />
-            <strong>{t[page === "help" ? "support" : page]}</strong>
+            <strong>
+              {
+                t[
+                  page === "help"
+                    ? "support"
+                    : page === "network"
+                      ? "networkNav"
+                      : page
+                ]
+              }
+            </strong>
           </div>
           <div className="topbar-right">
-            {nodeIndicator}
+            {page === "network" ? (
+              <span className="lab-topbar-label">
+                <FlaskConical size={13} />
+                {t.labNav}
+              </span>
+            ) : (
+              nodeIndicator
+            )}
             {localeControl}
           </div>
         </header>
-        {testBanner}
+        {page === "network" ? (
+          <div className="test-banner">
+            <FlaskConical size={14} />
+            <strong>{t.labNav}</strong>
+            <span>{t.labBanner}</span>
+          </div>
+        ) : (
+          testBanner
+        )}
         <main className="dashboard">
-          {page === "help" ? (
+          {page === "network" ? (
+            <NetworkLab locale={locale} />
+          ) : page === "help" ? (
             <>
               <div className="page-heading">
                 <div className="eyebrow">ATLAS PAY / GUIDE</div>

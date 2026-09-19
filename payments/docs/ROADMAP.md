@@ -14,17 +14,33 @@ Completion criteria: reproduce invoice → payment → confirmation → refund w
 
 ## Milestone 2 — Independent network specification
 
+Implemented toward this milestone: the pinned `atlas-local-v1` named-devnet
+specification, three loopback nodes with distinct wallets and verified chain
+identity, a live read-only monitor, and reproducible launch commands. This uses
+Dash's existing devnet mechanism and official binary. A separately compiled
+public-chain client and final mainnet parameter set are still future work.
+
 Decide name/ticker, intended payment market, threat model, sustainable operator budget and initial distribution. Specify network identifiers, genesis, seed bootstrap, address formats, replay isolation, difficulty rules, quorum formation and activation heights. Review all changes together: block-based schedules affect issuance and quorum timing.
 
 Build the fork from source and validate independent nodes against identical genesis/configuration. Publish a reproducible build recipe and the exact upstream diff. Test wallet/network separation and recovery. Recruit independent operators before claiming decentralization.
 
 ## Milestone 3 — Non-custodial payment integration
 
+Implemented toward this milestone: a separate customer-node PSBT signing CLI,
+exact transaction review, explicit approval, durable broadcast recovery and
+unsigned draft cancellation. The existing web invoice demo is still regtest
+and server-funded. Public checkout integration, authenticated merchant requests,
+merchant watch-only operation and customer device isolation are not complete.
+
 Use customer-controlled signing and merchant watch-only infrastructure. Design wallet backup/recovery and hardware signing integration. Add authenticated merchant accounts, public read-only invoice capabilities, signed expiring payment requests, webhooks with replay protection and idempotency, rate limits, audit records, and merchant-directed refunds. Keep private invoice metadata out of public chain storage.
 
 Choose whether Dash Platform identities and proofs justify operating the additional stack. Names and data contracts already exist upstream and should be integrated instead of advertised as newly invented features.
 
 ## Milestone 4 — Distributed testnet and operational evidence
+
+Local evidence now covers real three-node block relay, restart/catch-up and a
+partition with competing branches followed by convergence. All nodes are on
+one machine; this does not meet the independently operated testnet milestone.
 
 Measure p50/p95/p99 payment acceptance, actual confirmed throughput, quorum availability, ChainLocks lag, mempool behavior, full-node cost and state growth. Exercise network partitions, operator loss, conflicting transactions, insufficient fee, reorganization, overdue and overpaid invoices, interrupted upgrades and restored backups. Compare the same load and hardware with stock Dash.
 
