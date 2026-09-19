@@ -1,3 +1,31 @@
+# Atlas Pay
+
+A Dash Core fork with a working local payment workspace: merchant invoices,
+QR checkout, real test transactions, durable payment tracking and explicit refunds.
+
+**Current stage: local regtest prototype.** No live funds, public mainnet,
+fiat conversion or worldwide merchant service are launched by this repository.
+Atlas Pay is a provisional project name.
+
+```sh
+cd payments
+npm ci
+npm run demo
+```
+
+Open **http://127.0.0.1:4173**. Requires Node.js 22.13+; the setup downloads a
+checksum-verified official Dash Core 23.1.8 runtime into an isolated directory.
+
+- [Setup and payment walkthrough](payments/README.md)
+- [Fork baseline and project scope](ATLAS.md)
+- [Delivery roadmap](payments/docs/ROADMAP.md)
+- [Security boundaries](payments/docs/SECURITY.md)
+
+Application changes live in `payments/`. Upstream consensus is unchanged;
+the original Dash source and license notices are retained below.
+
+---
+
 Dash Core staging tree
 ===========================
 
