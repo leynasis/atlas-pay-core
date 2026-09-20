@@ -1,4 +1,4 @@
-# Atlas three-node development lab
+# LAVEPAY three-node development lab
 
 This stage adds three independent Dash processes with separate data directories and wallets on **one computer**. It exercises real P2P block relay, wallet separation and recovery from a local partition. It is not a public network, a production chain, or evidence of independent operators or economic security. No Dash C++ consensus source has been modified or rebuilt; the lab uses the same checksum-verified official Dash Core 23.1.8 binary as the original prototype.
 
@@ -19,16 +19,18 @@ node lab/stop.mjs
 
 ## Network identity
 
-The CLI name is `atlas-local-v1`; `getblockchaininfo.chain` returns **`devnet-atlas-local-v1`**, not the generic string `devnet`.
+LAVEPAY is the product brand and LAVE the planned currency name. The existing
+lab keeps its original identity and test-DASH units so that wallets, invoices
+and transaction history remain compatible. The CLI name is `atlas-local-v1`; `getblockchaininfo.chain` returns **`devnet-atlas-local-v1`**, not the generic string `devnet`.
 
 All Dash named devnets share block zero. Their distinct identity is the deterministic block at height one, whose coinbase commits to the name. The lab pins and checks both blocks before administrative operations:
 
 | Property | Pinned value |
 | --- | --- |
 | Shared block zero | `000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e` |
-| Atlas block one | `6bf1e63db8f55984d9ddfe93b99f0dd11e5d593c2d7cbdf706c84c11b37827d2` |
+| Named-devnet block one | `6bf1e63db8f55984d9ddfe93b99f0dd11e5d593c2d7cbdf706c84c11b37827d2` |
 
-This gives Atlas a distinct **named-devnet branch**, not a new production genesis, new address format or issued public asset. Addresses retain Dash's test-network encoding.
+This gives the lab a distinct **named-devnet branch**, not a new production genesis, new address format or issued public asset. Addresses retain Dash's test-network encoding.
 
 ## Roles, ports and credentials
 

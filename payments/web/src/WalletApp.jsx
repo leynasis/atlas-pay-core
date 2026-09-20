@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import Brand from "./Brand.jsx";
 import {
   ArrowLeft,
   ArrowRight,
@@ -21,7 +22,7 @@ const dictionary = {
   en: {
     customer: "Customer wallet",
     merchant: "Merchant wallet",
-    eyebrow: "ATLAS / YOUR APPROVAL",
+    eyebrow: "LAVEPAY / YOUR APPROVAL",
     title: "Review first.\nSign when ready.",
     subtitle:
       "This wallet signs only after your explicit approval on this page.",
@@ -30,7 +31,7 @@ const dictionary = {
     pendingBalance: "Pending balance",
     receive: "Your receiving address",
     receiveHelp:
-      "Use this address to receive test DASH or a refund on the Atlas devnet.",
+      "Use this address to receive test DASH or a refund on the LAVEPAY devnet.",
     connected: "Wallet node connected",
     offline: "Wallet node unavailable",
     checking: "Connecting to wallet",
@@ -132,7 +133,7 @@ const dictionary = {
   ru: {
     customer: "Кошелёк покупателя",
     merchant: "Кошелёк продавца",
-    eyebrow: "ATLAS / ВАШЕ ОДОБРЕНИЕ",
+    eyebrow: "LAVEPAY / ВАШЕ ОДОБРЕНИЕ",
     title: "Сначала проверьте.\nЗатем подпишите.",
     subtitle:
       "Кошелёк подписывает транзакцию только после вашего явного одобрения на этой странице.",
@@ -141,7 +142,7 @@ const dictionary = {
     pendingBalance: "Ожидающий баланс",
     receive: "Ваш адрес для получения",
     receiveHelp:
-      "Используйте этот адрес для получения тестовых DASH или возврата в devnet Atlas.",
+      "Используйте этот адрес для получения тестовых DASH или возврата в devnet LAVEPAY.",
     connected: "Узел кошелька подключён",
     offline: "Узел кошелька недоступен",
     checking: "Подключение к кошельку",
@@ -467,16 +468,7 @@ export default function WalletApp() {
   return (
     <div className="wallet-app">
       <header className="wallet-header">
-        <a className="brand" href="http://127.0.0.1:4173/">
-          <span className="brand-mark">
-            <span />
-            <span />
-          </span>
-          <span>
-            atlas<span className="brand-light">pay</span>
-            <sup>●</sup>
-          </span>
-        </a>
+        <Brand href="http://127.0.0.1:4173/" />
         <div className="wallet-header-right">
           <span className="wallet-role-pill">
             <Wallet size={14} />

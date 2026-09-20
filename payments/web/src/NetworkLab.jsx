@@ -20,7 +20,7 @@ import {
 
 const copy = {
   en: {
-    eyebrow: "ATLAS / NETWORK LAB",
+    eyebrow: "LAVEPAY / NETWORK LAB",
     title: "One local network.\nThree connected roles.",
     subtitle:
       "Observe the independent devnet and compare each node’s view of the chain.",
@@ -36,7 +36,7 @@ const copy = {
       "Three processes on this computer. Test coins only; this is not a public or decentralized production network.",
     separate: "Three nodes, separate wallet approval",
     separateBody:
-      "The merchant workspace and the customer and merchant wallets use this Atlas devnet. Signing happens in the separate wallet services. The original regtest prototype remains a separate legacy environment.",
+      "The merchant workspace and the customer and merchant wallets use this LAVEPAY devnet. Signing happens in the separate wallet services. The original regtest prototype remains a separate legacy environment.",
     nodeTitle: "Network nodes",
     nodeSubtitle: "Health and peer connections reported by each node.",
     online: "Online",
@@ -46,7 +46,7 @@ const copy = {
     expected: "configured nodes",
     identityTitle: "Chain identity",
     identities: "identities verified",
-    identityNote: "Matches the configured Atlas devnet",
+    identityNote: "Matches the configured LAVEPAY devnet",
     convergence: "Chain convergence",
     synchronized: "Same chain tip",
     unsynchronized: "Not converged",
@@ -93,7 +93,7 @@ const copy = {
     checks: "Live node observations",
   },
   ru: {
-    eyebrow: "ATLAS / ЛАБОРАТОРИЯ СЕТИ",
+    eyebrow: "LAVEPAY / ЛАБОРАТОРИЯ СЕТИ",
     title: "Одна локальная сеть.\nТри связанные роли.",
     subtitle:
       "Следите за отдельной devnet и сравнивайте состояние цепочки на каждом узле.",
@@ -108,7 +108,7 @@ const copy = {
       "Три процесса на этом компьютере. Только тестовые монеты; это не публичная и не децентрализованная рабочая сеть.",
     separate: "Три узла и отдельное одобрение в кошельке",
     separateBody:
-      "Кабинет продавца и отдельные кошельки покупателя и продавца работают в этой devnet Atlas. Подписание выполняют сервисы кошельков. Прежний прототип regtest остаётся отдельной средой.",
+      "Кабинет продавца и отдельные кошельки покупателя и продавца работают в этой devnet LAVEPAY. Подписание выполняют сервисы кошельков. Прежний прототип regtest остаётся отдельной средой.",
     nodeTitle: "Узлы сети",
     nodeSubtitle: "Доступность и соединения по данным каждого узла.",
     online: "Доступен",
@@ -118,7 +118,7 @@ const copy = {
     expected: "настроенных узлов",
     identityTitle: "Проверка сети",
     identities: "узлов проверено",
-    identityNote: "Соответствуют настроенной Atlas devnet",
+    identityNote: "Соответствуют настроенной LAVEPAY devnet",
     convergence: "Совпадение цепочек",
     synchronized: "Узлы синхронизированы",
     unsynchronized: "Нет совпадения",

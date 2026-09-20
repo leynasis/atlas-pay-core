@@ -28,6 +28,7 @@ import {
 import "./styles.css";
 import NetworkLab from "./NetworkLab.jsx";
 import WalletApp from "./WalletApp.jsx";
+import Logo from "./Brand.jsx";
 
 const words = {
   en: {
@@ -341,13 +342,16 @@ Object.assign(words.ru, {
   additionalReceipt: "Получено после возврата",
 });
 Object.assign(words.en, {
-  test: "Atlas local devnet",
+  currencyHeading: "LAVE — the currency of LAVEPAY",
+  currencyNote:
+    "LAVE is the chosen name of our currency. This prototype currently uses local Dash test coins, so amounts remain denominated in DASH. LAVE has not been issued yet.",
+  test: "LAVEPAY local devnet",
   testNote: "Independent local chain · Test coins only",
-  blockchain: "ATLAS DEVNET",
-  networkSub: "Connected to the Atlas merchant node.",
+  blockchain: "LAVEPAY DEVNET",
+  networkSub: "Connected to the LAVEPAY merchant node.",
   mine: "Create a test block",
   mineHint:
-    "Creates one block on the local Atlas devnet to confirm pending transactions.",
+    "Creates one block on the local LAVEPAY devnet to confirm pending transactions.",
   confirm: "Create a test block",
   confirmRefund: "Create a test block",
   testTools: "Your payment",
@@ -368,12 +372,12 @@ Object.assign(words.en, {
   partialNote:
     "A partial payment was received. Check the receipt before proceeding; confirmed funds can be refunded.",
   waitNote:
-    "This invoice accepts local Atlas devnet DASH only. The customer wallet shows the network, recipient, amount and fee before signing.",
+    "This invoice accepts local LAVEPAY devnet DASH only. The customer wallet shows the network, recipient, amount and fee before signing.",
   reviewBody:
     "This receipt needs review. Only actions explicitly available below can proceed.",
   step2Body: "Open the customer wallet and approve the transaction.",
   step3Body: "Create a test block to confirm settlement.",
-  qr: "QR code for the Atlas invoice checkout",
+  qr: "QR code for the LAVEPAY invoice checkout",
   balanceNote: "Local merchant wallet balance.",
   refundCreated: "Refund request created; no funds have been sent.",
   signingBoundary: "The merchant server does not sign customer payments.",
@@ -381,13 +385,16 @@ Object.assign(words.en, {
   legacy: "Legacy regtest",
 });
 Object.assign(words.ru, {
-  test: "Локальная devnet Atlas",
+  currencyHeading: "LAVE — валюта системы LAVEPAY",
+  currencyNote:
+    "LAVE — выбранное название нашей валюты. Сейчас прототип использует локальные тестовые монеты Dash, поэтому суммы обозначены DASH. Выпуск LAVE ещё впереди.",
+  test: "Локальная devnet LAVEPAY",
   testNote: "Отдельная локальная цепочка · Тестовые монеты",
-  blockchain: "ATLAS DEVNET",
-  networkSub: "Подключение к узлу продавца Atlas.",
+  blockchain: "LAVEPAY DEVNET",
+  networkSub: "Подключение к узлу продавца LAVEPAY.",
   mine: "Создать тестовый блок",
   mineHint:
-    "Создаёт один блок в локальной devnet Atlas для подтверждения ожидающих транзакций.",
+    "Создаёт один блок в локальной devnet LAVEPAY для подтверждения ожидающих транзакций.",
   confirm: "Создать тестовый блок",
   confirmRefund: "Создать тестовый блок",
   testTools: "Ваш платёж",
@@ -408,12 +415,12 @@ Object.assign(words.ru, {
   partialNote:
     "Получена часть суммы. Проверьте поступление; подтверждённые средства можно вернуть.",
   waitNote:
-    "Принимаются только тестовые DASH локальной devnet Atlas. Кошелёк покупателя покажет сеть, получателя, сумму и комиссию до подписания.",
+    "Принимаются только тестовые DASH локальной devnet LAVEPAY. Кошелёк покупателя покажет сеть, получателя, сумму и комиссию до подписания.",
   reviewBody:
     "Это поступление требует проверки. Доступны только явно разрешённые действия ниже.",
   step2Body: "Откройте кошелёк покупателя и одобрите транзакцию.",
   step3Body: "Создайте тестовый блок для подтверждения.",
-  qr: "QR-код страницы оплаты Atlas",
+  qr: "QR-код страницы оплаты LAVEPAY",
   balanceNote: "Баланс локального кошелька продавца.",
   refundCreated: "Запрос возврата создан; средства ещё не отправлены.",
   signingBoundary: "Сервер продавца не подписывает платежи покупателя.",
@@ -448,22 +455,6 @@ async function api(path, method = "GET", body) {
   if (!response.ok)
     throw new Error(result.error?.message || `HTTP ${response.status}`);
   return result;
-}
-function Logo({ compact = false }) {
-  return (
-    <a className="brand" href="/" aria-label="Atlas Pay">
-      <span className="brand-mark">
-        <span />
-        <span />
-      </span>
-      {!compact && (
-        <span>
-          atlas<span className="brand-light">pay</span>
-          <sup>●</sup>
-        </span>
-      )}
-    </a>
-  );
 }
 function Badge({ status, t, review = false }) {
   return (
@@ -625,7 +616,7 @@ function InvoiceForm({ t, onClose, onCreated }) {
           {t.merchant}
           <input
             name="merchantName"
-            defaultValue="Atlas Studio"
+            defaultValue="LAVEPAY Studio"
             required
             maxLength={100}
             autoComplete="organization"
@@ -805,7 +796,7 @@ function Detail({
             <div className="qr-caption">
               DASH{" "}
               <span>
-                {status?.network === "regtest" ? "REGTEST" : "ATLAS DEVNET"}
+                {status?.network === "regtest" ? "REGTEST" : "LAVEPAY DEVNET"}
               </span>
             </div>
           </div>
@@ -1149,7 +1140,7 @@ function App() {
           </a>
           <div className="checkout-intro">
             <div>
-              <div className="eyebrow">ATLAS PAY</div>
+              <div className="eyebrow">LAVEPAY</div>
               <h1>{t.checkoutTitle}</h1>
             </div>
             {nodeIndicator}
@@ -1258,16 +1249,16 @@ function App() {
               <strong>
                 {status?.network === "regtest"
                   ? "Dash regtest"
-                  : "Atlas devnet"}
+                  : "LAVEPAY devnet"}
               </strong>
               <span>{status?.connected ? t.connected : t.disconnected}</span>
             </div>
             <i className={status?.connected ? "online-dot" : "offline-dot"} />
           </div>
           <div className="account">
-            <div className="avatar">A</div>
+            <div className="avatar">L</div>
             <div>
-              <strong>Atlas Studio</strong>
+              <strong>LAVEPAY Studio</strong>
               <span>{t.merchantAccount}</span>
             </div>
             <ChevronRight size={15} />
@@ -1318,10 +1309,17 @@ function App() {
           ) : page === "help" ? (
             <>
               <div className="page-heading">
-                <div className="eyebrow">ATLAS PAY / GUIDE</div>
+                <div className="eyebrow">LAVEPAY / GUIDE</div>
                 <h1>{t.howTitle}</h1>
                 <p>{t.howSub}</p>
               </div>
+              <section className="currency-brand-card">
+                <span className="currency-brand-symbol">LAVE</span>
+                <div>
+                  <h2>{t.currencyHeading}</h2>
+                  <p>{t.currencyNote}</p>
+                </div>
+              </section>
               <Flow t={t} />
               <div className="help-box">
                 <ShieldCheck size={25} />
@@ -1573,7 +1571,7 @@ function App() {
                         <span>
                           {status?.network === "regtest"
                             ? "Dash Core · Regtest"
-                            : "Atlas · atlas-local-v1"}
+                            : "LAVEPAY · atlas-local-v1"}
                         </span>
                       </div>
                       <span
@@ -1659,7 +1657,7 @@ function Flow({ t }) {
   return (
     <section className="flow-card">
       <div className="flow-heading">
-        <span className="eyebrow">ATLAS PAY</span>
+        <span className="eyebrow">LAVEPAY</span>
         <h3>{t.flow}</h3>
         <div className="flow-decoration">
           <ArrowUpRight size={25} />

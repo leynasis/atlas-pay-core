@@ -11,7 +11,7 @@ These processes still run as the same operating-system user. A compromised proce
 From `payments`, start the named devnet with `npm run lab:start`. Create a merchant payment request:
 
 ```sh
-npm run signer:request -- --amount 0.25 --description "Order #1042" --merchant "Atlas Studio" --out .runtime/order-1042.json
+npm run signer:request -- --amount 0.25 --description "Order #1042" --merchant "LAVEPAY Demo" --out .runtime/order-1042.json
 npm run signer -- prepare .runtime/order-1042.json
 ```
 

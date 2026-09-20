@@ -1,4 +1,4 @@
-# Atlas Pay
+# LAVEPAY
 
 A Dash Core fork with a working local payment workspace: merchant invoices,
 QR checkout, real test transactions, durable payment tracking and explicit refunds.
@@ -7,7 +7,9 @@ wallets for customer payment and merchant-approved refunds.
 
 **Current stage: local named-devnet payment prototype.** No live funds, public mainnet,
 fiat conversion or worldwide merchant service are launched by this repository.
-Atlas Pay is a provisional project name.
+**LAVE** is the selected name of the planned native currency; **LAVEPAY** is the
+payment system. The existing laboratory still transacts in valueless test DASH
+on `atlas-local-v1`; the brand change does not issue LAVE or change consensus.
 
 ```sh
 cd payments
@@ -19,7 +21,7 @@ Open **http://127.0.0.1:4173**. Requires Node.js 22.13+; the setup downloads a
 checksum-verified official Dash Core 23.1.8 runtime into an isolated directory.
 
 - [Setup and payment walkthrough](payments/README.md)
-- [Fork baseline and project scope](ATLAS.md)
+- [Fork baseline and project scope](LAVEPAY.md)
 - [Delivery roadmap](payments/docs/ROADMAP.md)
 - [Security boundaries](payments/docs/SECURITY.md)
 - [Three-node network lab](payments/docs/LAB.md)

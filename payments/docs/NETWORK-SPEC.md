@@ -1,7 +1,9 @@
-# Atlas local network specification, version 1
+# LAVEPAY local network specification, version 1
 
 This specification describes a reproducible developer network, not proposed
-mainnet economics. Authoritative machine-readable constants are in
+mainnet economics. LAVE is the selected name of the planned native currency;
+this existing lab still uses test DASH and retains the original `atlas-local-v1`
+network identity. Authoritative machine-readable constants are in
 [`lab/config.mjs`](../lab/config.mjs).
 
 | Property | Local specification |

@@ -1,6 +1,6 @@
-# Atlas Pay v0.3 local API
+# LAVEPAY v0.3 local API
 
-Default applications bind only `127.0.0.1`: merchant/checkout `4173`, customer wallet `4174`, merchant refund wallet `4175`. All monetary operations pin `devnet-atlas-local-v1` and both genesis hashes. Amounts are exact decimal strings in valueless test DASH.
+Default applications bind only `127.0.0.1`: merchant/checkout `4173`, customer wallet `4174`, merchant refund wallet `4175`. All monetary operations pin `devnet-atlas-local-v1` and both genesis hashes. Amounts are exact decimal strings in valueless test DASH. LAVE is the selected currency name for the future network; this API still reports `currency: "DASH"` for its existing runtime. Branding does not change chain IDs, request hashes, amounts or transaction formats.
 
 ## Merchant — port 4173
 

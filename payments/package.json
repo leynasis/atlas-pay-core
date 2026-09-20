@@ -1,9 +1,9 @@
 {
-  "name": "atlas-pay-lab",
+  "name": "lavepay-lab",
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Local Atlas devnet payments with separate customer and merchant signing wallets",
+  "description": "LAVEPAY local devnet payments with separate customer and merchant signing wallets",
   "engines": {
     "node": ">=22.13.0"
   },

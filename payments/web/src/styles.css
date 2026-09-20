@@ -83,7 +83,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 27px;
+  font-size: 23px;
   letter-spacing: -1.2px;
   font-weight: 750;
   white-space: nowrap;
@@ -108,17 +108,55 @@ svg {
   position: absolute;
   display: block;
   background: #1b6b59;
-  transform: skew(-23deg);
+  transform: skew(-12deg);
   height: 29px;
   width: 10px;
-  left: 7px;
+  left: 5px;
   top: 2px;
   border-radius: 1px;
 }
 .brand-mark span + span {
-  transform: skew(23deg);
-  left: 19px;
+  transform: skew(-12deg);
+  left: 5px;
+  top: 22px;
+  width: 24px;
+  height: 9px;
   background: #2aa785;
+}
+.currency-brand-card {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 26px;
+  margin: 0 0 28px;
+  background: #edf3e4;
+  border: 1px solid #dce6d0;
+  border-radius: 12px;
+}
+.currency-brand-symbol {
+  color: #1b6b59;
+  font-size: 32px;
+  font-weight: 750;
+  letter-spacing: -1px;
+}
+.currency-brand-card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+.currency-brand-card p {
+  margin: 0;
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #66756d;
+}
+@media (max-width: 600px) {
+  .currency-brand-card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+  }
 }
 .sidebar-label {
   font-size: 9px;
