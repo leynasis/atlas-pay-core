@@ -2,7 +2,7 @@
 
 This stage adds three independent Dash processes with separate data directories and wallets on **one computer**. It exercises real P2P block relay, wallet separation and recovery from a local partition. It is not a public network, a production chain, or evidence of independent operators or economic security. No Dash C++ consensus source has been modified or rebuilt; the lab uses the same checksum-verified official Dash Core 23.1.8 binary as the original prototype.
 
-The existing single-node payment application remains on its original isolated regtest chain. Its wallets, invoice database and RPC port are separate from this lab.
+Version 0.3 uses this devnet for merchant invoices and separate customer/refund wallets. The original single-node regtest survives as an optional legacy API on port 4180, with separate wallets and database.
 
 ## Run
 
@@ -43,6 +43,8 @@ Each datadir is `.runtime/lab/<node-id>/`; each cookie is beneath `devnet-atlas-
 P2P is enabled for this lab, with DNS, fixed seeds, discovery, Tor listeners, port mapping and automatic connections disabled. Startup creates a directed triangle with explicit `addnode ... onetry` loopback targets. There are no Internet peers. Guards check the exact named-devnet identity, loopback peer addresses, exact outbound destination ports and the peer's advertised devnet name. Incoming TCP source ports are ephemeral; their UI `nodeId` may be null. Peer advertisements are not authenticated operator identities.
 
 The read-only dashboard uses **separate credentials**, stored in `.runtime/lab/dashboard/<node-id>.json`. The daemon enforces a whitelist containing only `getblockchaininfo`, `getnetworkinfo`, `getpeerinfo` and `getblockhash`. Requests to spend, stop a node or read its wallet are rejected by Dash itself. The dashboard status module never reads administrative cookies or wallet keys.
+
+The merchant API has its own daemon-enforced limited credential for address derivation and transaction reads; see [MERCHANT.md](MERCHANT.md). Signing is performed only by the separate wallet services. The explicit local test mining endpoint accesses the miner administrator cookie, while synchronization uses the read-only dashboard credentials.
 
 Administrative scripts use cookie authentication. `rpcwhitelistdefault=0` preserves cookie administration while explicit dashboard users stay restricted. This is a method boundary, not an OS security boundary: all processes run as the same operating-system user, which can read these local files. Separate machines/users or a hardened signer are still required for production separation.
 

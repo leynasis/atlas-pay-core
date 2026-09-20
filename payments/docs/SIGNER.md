@@ -1,6 +1,6 @@
 # Customer-controlled signing lab
 
-This is a local named-devnet experiment with real Dash 23.1.8 PSBTs and transactions. The merchant wallet is on node 2 (`merchant`), and the customer wallet is on node 3 (`customer`). The existing regtest payment API and its demo payer remain a separate experiment; this CLI does not make that API noncustodial.
+This is a local named-devnet experiment with real Dash 23.1.8 PSBTs and transactions. The merchant wallet is on node 2 (`merchant`), and the customer wallet is on node 3 (`customer`). Version 0.3 uses this signing policy in separate customer and merchant browser wallets; see [WALLET.md](WALLET.md). The customer CLI shares its durable journal with the customer browser wallet. The original server-funded regtest API remains a separate legacy experiment on port 4180.
 
 The customer command owns its node RPC interaction. It never sends a private key, wallet cookie, unsigned PSBT, or signing command to the payment API. The API's lab dashboard credentials allow chain inspection only. The miner, merchant, and customer nodes have separate data directories and wallets.
 

@@ -34,9 +34,9 @@ const copy = {
     local: "Local devnet",
     localBody:
       "Three processes on this computer. Test coins only; this is not a public or decentralized production network.",
-    separate: "Separate from your payment workspace",
+    separate: "Three nodes, separate wallet approval",
     separateBody:
-      "These devnet nodes use their own chain and wallets. The existing invoices and payment controls continue to use the separate Dash regtest chain.",
+      "The merchant workspace and the customer and merchant wallets use this Atlas devnet. Signing happens in the separate wallet services. The original regtest prototype remains a separate legacy environment.",
     nodeTitle: "Network nodes",
     nodeSubtitle: "Health and peer connections reported by each node.",
     online: "Online",
@@ -106,9 +106,9 @@ const copy = {
     local: "Локальная devnet",
     localBody:
       "Три процесса на этом компьютере. Только тестовые монеты; это не публичная и не децентрализованная рабочая сеть.",
-    separate: "Отдельно от платёжного кабинета",
+    separate: "Три узла и отдельное одобрение в кошельке",
     separateBody:
-      "У этих узлов devnet своя цепочка и кошельки. Существующие счета и действия с платежами по-прежнему используют отдельную цепочку Dash regtest.",
+      "Кабинет продавца и отдельные кошельки покупателя и продавца работают в этой devnet Atlas. Подписание выполняют сервисы кошельков. Прежний прототип regtest остаётся отдельной средой.",
     nodeTitle: "Узлы сети",
     nodeSubtitle: "Доступность и соединения по данным каждого узла.",
     online: "Доступен",

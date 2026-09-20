@@ -1,31 +1,27 @@
-# Prototype security boundaries
+# Prototype security boundaries — v0.3
 
-The payment application is a local development tool with test funds. Do not expose its HTTP or RPC ports to a network or tunnel them to the internet. The local test controls deliberately spend from dedicated regtest wallets.
+This is a loopback development system with valueless test coins. HTTP and RPC services are not ready for internet exposure.
 
-## Boundaries
+- The default payment flow pins `devnet-atlas-local-v1` and both genesis hashes. The optional legacy API separately requires isolated regtest.
+- Merchant RPC credentials are restricted by Dash itself to derivation and required reads. They cannot sign, send, export keys or stop nodes. The node's merchant wallet still contains keys: it is not watch-only.
+- Customer payment and merchant refund signing happen in separate role-bound wallet processes with separate durable journals. No private keys or RPC credentials are returned to browsers.
+- Wallet POST requests require exact Host/Origin, a role-specific HttpOnly SameSite session cookie and a secret CSRF header. Merchant endpoints have Host/Origin checks but no merchant account authentication.
+- Browser navigation and preparation do not authorize a spend. A separate explicit approval must match the concrete transaction fingerprint; source details are fetched again before a fresh signature.
+- Money uses bounded decimal strings and integer satoshis. PSBT policy verifies wallet-owned confirmed inputs, the exact recipient, owned change, signature mode and fee ceilings.
+- Signed bytes and txid are journaled before broadcast. Lost responses recover the same transaction. Interrupted ambiguous preparation/signing states fail closed for inspection; cancellation is only for unsigned drafts.
+- A checksum does not authenticate merchant identity. Merchant names remain unverified. Local source checks do not lock out simultaneous payments from other devices.
+- Full confirmed receipts may be refunded to an explicit merchant-selected address through the merchant wallet. Receipt registration independently checks the actual outgoing transaction; extra receipts, conflicts and changed totals require review.
+- The local test mining helper uses the miner's administrative transport. Monitoring uses separate restricted credentials on all three nodes. There is no HTTP node-start/stop or generic RPC proxy.
+- Block confirmations are not InstantSend or ChainLocks. No quorums are configured.
 
-- Dash RPC is bound to loopback and authenticated through a runtime cookie.
-- A dedicated, ignored runtime data directory avoids the user's normal Dash wallets.
-- Payment API monetary operations check the chain is isolated `regtest`; production chains must fail closed. Separate lab CLI operations require the exact `devnet-atlas-local-v1` chain name and both pinned genesis hashes.
-- Private keys and RPC credentials remain in the local node and are not returned to the browser.
-- Host/Origin checks reduce cross-site requests to the local server. These are not merchant authentication or a production access-control system.
-- Amounts enter as bounded decimal strings and are tracked in integer satoshis.
-- Mutation idempotency and durable operation records are designed to prevent duplicate payments on repeated clicks/retries. Uncertain transaction broadcasts require reconciliation rather than blind retry.
-- A refund is a new transaction. It never reverses or deletes a confirmed payment.
-- Status is obtained from the running node. The prototype has no masternode quorums and must not label block confirmation as InstantSend or ChainLocks.
-- Lab monitoring uses a separate daemon-enforced RPC method whitelist. The web API exposes no lab spend, sign, mine or lifecycle action.
-- The customer CLI constructs and validates a PSBT, checks actual wallet ownership and fees, and requires transaction-specific terminal approval. Requests have a checksum, not authenticated merchant identity.
-- Separate lab node wallets do not establish isolation against another process with the same OS user's filesystem access. Customer signing on a separate device/account remains a production requirement.
+## Local isolation limitation
+
+Separate processes, wallets and RPC credentials do not protect against a process running as the same operating-system user that can read all runtime files. This is not production custody isolation or a claim of customer-device ownership. Customer wallets must move to separate trusted devices/accounts before public use.
 
 ## Runtime data
 
-`payments/.runtime/` contains test-wallet data, the RPC cookie, downloaded binaries and invoice state. It is excluded from Git. Never copy this directory into a public artifact or commit it. Test keys are still secrets even though these coins have no monetary value.
-
-This also includes lab administrator cookies, limited monitoring credentials,
-bootstrap journals and the customer's signing journal. Signed raw transactions
-are stored durably before broadcast so uncertain outcomes never trigger a new
-payment. Ambiguous preparation/signing states fail closed for manual inspection.
+`.runtime/` contains node wallets, administrator cookies, limited credentials, binaries, invoices and signing journals including signed raw transactions. It is excluded from Git. Never publish or copy it into a deliverable. Test keys remain secrets despite having no monetary value.
 
 ## Before production
 
-Replace local spending controls with customer/merchant-controlled signing, define custody and recovery, authenticate merchant operations, harden request validation/rate limits, implement public invoice capability boundaries, remove demo controls, establish secure deployment and observability, verify transaction reconciliation under reorganizations, and obtain independent security review. See ROADMAP.md for independent-network requirements.
+Define custody and recovery, authenticate merchants and signed payment requests, use public invoice capabilities, isolate signers, add rate limits and replay-safe webhooks, remove development mining, implement secure deployment and observability, and obtain independent security review. Distributed network and fiat/payment operations are separate milestones in [ROADMAP.md](ROADMAP.md).

@@ -143,14 +143,20 @@ export async function inspectPsbt({
   rpc,
   now = Date.now(),
   expectedTemplateHash,
+  role = "customer",
 }) {
+  requirePolicy(
+    ["customer", "merchant"].includes(role),
+    "WRONG_ROLE",
+    "Unsupported signer role.",
+  );
   const amount = validateRequest(request, identity, now);
   requirePolicy(
     typeof psbt === "string" && psbt.length <= 200_000,
     "INVALID_PSBT",
     "PSBT exceeds the supported size.",
   );
-  const decoded = await rpc("customer", "decodepsbt", [psbt]);
+  const decoded = await rpc(role, "decodepsbt", [psbt]);
   const tx = decoded.tx;
   requirePolicy(
     decoded.psbt_version === 0 &&
@@ -169,27 +175,20 @@ export async function inspectPsbt({
     "INVALID_PSBT",
     "Unexpected transaction input/output count.",
   );
-  const destination = await rpc("customer", "validateaddress", [
-    request.address,
-  ]);
+  const destination = await rpc(role, "validateaddress", [request.address]);
   requirePolicy(
     destination.isvalid && destination.scriptPubKey,
     "INVALID_ADDRESS",
     "Destination is not valid on the selected network.",
   );
-  const change = await rpc(
-    "customer",
-    "getaddressinfo",
-    [changeAddress],
-    "customer",
-  );
+  const change = await rpc(role, "getaddressinfo", [changeAddress], role);
   requirePolicy(
     change.ismine &&
       !change.iswatchonly &&
       change.ischange &&
       change.scriptPubKey !== destination.scriptPubKey,
     "UNOWNED_CHANGE",
-    "Change must belong to the customer change wallet.",
+    "Change must belong to the signing change wallet.",
   );
   let totalOutputs = 0n;
   let merchantOutputs = 0;
@@ -218,7 +217,7 @@ export async function inspectPsbt({
   requirePolicy(
     merchantOutputs === 1 && changeOutputs <= 1,
     "INVALID_OUTPUTS",
-    "Expected one merchant output and at most one customer change output.",
+    "Expected one merchant output and at most one owned change output.",
   );
   const outpoints = [];
   let totalInputs = 0n;
@@ -249,11 +248,7 @@ export async function inspectPsbt({
       "PRE_SIGNED_PSBT",
       "Imported signatures are not accepted.",
     );
-    const utxo = await rpc("customer", "gettxout", [
-      input.txid,
-      input.vout,
-      true,
-    ]);
+    const utxo = await rpc(role, "gettxout", [input.txid, input.vout, true]);
     requirePolicy(
       utxo && utxo.confirmations >= 1,
       "INPUT_UNAVAILABLE",
@@ -265,18 +260,13 @@ export async function inspectPsbt({
       "UNOWNED_INPUT",
       "Unsupported input script.",
     );
-    const owner = await rpc(
-      "customer",
-      "getaddressinfo",
-      [address],
-      "customer",
-    );
+    const owner = await rpc(role, "getaddressinfo", [address], role);
     requirePolicy(
       owner.ismine &&
         !owner.iswatchonly &&
         owner.scriptPubKey === utxo.scriptPubKey.hex,
       "UNOWNED_INPUT",
-      "Every input must belong to the customer wallet.",
+      "Every input must belong to the signing wallet.",
     );
     const previous = metadata.non_witness_utxo;
     const previousOutput = previous?.vout?.[input.vout];

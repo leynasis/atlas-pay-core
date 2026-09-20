@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import NetworkLab from "./NetworkLab.jsx";
+import WalletApp from "./WalletApp.jsx";
 
 const words = {
   en: {
@@ -339,6 +340,86 @@ Object.assign(words.ru, {
   refundedAmount: "Сумма возврата",
   additionalReceipt: "Получено после возврата",
 });
+Object.assign(words.en, {
+  test: "Atlas local devnet",
+  testNote: "Independent local chain · Test coins only",
+  blockchain: "ATLAS DEVNET",
+  networkSub: "Connected to the Atlas merchant node.",
+  mine: "Create a test block",
+  mineHint:
+    "Creates one block on the local Atlas devnet to confirm pending transactions.",
+  confirm: "Create a test block",
+  confirmRefund: "Create a test block",
+  testTools: "Your payment",
+  testToolsSub:
+    "Open the separate customer wallet to review and approve this payment.",
+  pay: "Open customer wallet",
+  refund: "Prepare refund request",
+  refundHint:
+    "Enter the recipient’s devnet address. The merchant wallet will separately review, sign and send the refund.",
+  refunding: "Preparing request…",
+  refundAddress: "Refund recipient address",
+  openMerchantWallet: "Open merchant wallet",
+  awaitingRefundApproval: "Refund awaits wallet approval",
+  requestedRefund: "Requested refund",
+  refundPrepared: "Refund request prepared.",
+  customerAddressHint: "Find the receiving address in the customer wallet.",
+  openCustomerWallet: "View customer wallet",
+  partialNote:
+    "A partial payment was received. Check the receipt before proceeding; confirmed funds can be refunded.",
+  waitNote:
+    "This invoice accepts local Atlas devnet DASH only. The customer wallet shows the network, recipient, amount and fee before signing.",
+  reviewBody:
+    "This receipt needs review. Only actions explicitly available below can proceed.",
+  step2Body: "Open the customer wallet and approve the transaction.",
+  step3Body: "Create a test block to confirm settlement.",
+  qr: "QR code for the Atlas invoice checkout",
+  balanceNote: "Local merchant wallet balance.",
+  refundCreated: "Refund request created; no funds have been sent.",
+  signingBoundary: "The merchant server does not sign customer payments.",
+  unsupportedWallet: "Wallet approval is unavailable for this invoice.",
+  legacy: "Legacy regtest",
+});
+Object.assign(words.ru, {
+  test: "Локальная devnet Atlas",
+  testNote: "Отдельная локальная цепочка · Тестовые монеты",
+  blockchain: "ATLAS DEVNET",
+  networkSub: "Подключение к узлу продавца Atlas.",
+  mine: "Создать тестовый блок",
+  mineHint:
+    "Создаёт один блок в локальной devnet Atlas для подтверждения ожидающих транзакций.",
+  confirm: "Создать тестовый блок",
+  confirmRefund: "Создать тестовый блок",
+  testTools: "Ваш платёж",
+  testToolsSub:
+    "Откройте отдельный кошелёк покупателя, чтобы проверить и подтвердить платёж.",
+  pay: "Открыть кошелёк покупателя",
+  refund: "Подготовить запрос возврата",
+  refundHint:
+    "Введите адрес получателя в devnet. Кошелёк продавца отдельно проверит, подпишет и отправит возврат.",
+  refunding: "Подготовка запроса…",
+  refundAddress: "Адрес получателя возврата",
+  openMerchantWallet: "Открыть кошелёк продавца",
+  awaitingRefundApproval: "Возврат ожидает одобрения в кошельке",
+  requestedRefund: "Запрошенный возврат",
+  refundPrepared: "Запрос возврата подготовлен.",
+  customerAddressHint: "Адрес для получения указан в кошельке покупателя.",
+  openCustomerWallet: "Открыть кошелёк покупателя",
+  partialNote:
+    "Получена часть суммы. Проверьте поступление; подтверждённые средства можно вернуть.",
+  waitNote:
+    "Принимаются только тестовые DASH локальной devnet Atlas. Кошелёк покупателя покажет сеть, получателя, сумму и комиссию до подписания.",
+  reviewBody:
+    "Это поступление требует проверки. Доступны только явно разрешённые действия ниже.",
+  step2Body: "Откройте кошелёк покупателя и одобрите транзакцию.",
+  step3Body: "Создайте тестовый блок для подтверждения.",
+  qr: "QR-код страницы оплаты Atlas",
+  balanceNote: "Баланс локального кошелька продавца.",
+  refundCreated: "Запрос возврата создан; средства ещё не отправлены.",
+  signingBoundary: "Сервер продавца не подписывает платежи покупателя.",
+  unsupportedWallet: "Для этого счёта одобрение в кошельке недоступно.",
+  legacy: "Прежняя regtest",
+});
 const sats = (value) => {
   const [whole, decimal = ""] = String(value || "0").split(".");
   return (
@@ -614,9 +695,12 @@ function Detail({
   checkout = false,
 }) {
   const [busy, setBusy] = useState(""),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [refundAddress, setRefundAddress] = useState("");
+  const requestKey = useRef(key());
   const connected = status?.connected;
-  const canTransfer = connected && !i.requiresReview;
+  const walletUrl = (role, kind) =>
+    `http://127.0.0.1:${role === "customer" ? "4174" : "4175"}/#invoice=${encodeURIComponent(i.id)}&kind=${kind}`;
   const note = {
     pending: "waitNote",
     partial: "partialNote",
@@ -626,35 +710,51 @@ function Detail({
     refund_pending: "refundPendingNote",
     refunded: "refundedNote",
   }[i.status];
-  async function action(which) {
+  async function mine() {
     if (busy) return;
-    setBusy(which);
+    setBusy("mine");
     setError("");
     try {
-      await api(
-        which === "mine" ? "/dev/mine" : `/invoices/${i.id}/${which}`,
-        "POST",
-        which === "mine" ? { blocks: 1 } : {},
-      );
+      await api("/dev/mine", "POST", { blocks: 1, invoiceId: i.id });
       await refresh();
-      onToast(
-        t[
-          which === "mine"
-            ? "successMine"
-            : which === "pay"
-              ? "successPay"
-              : "successRefund"
-        ],
-      );
+      onToast(t.successMine);
     } catch (err) {
       setError(err.message || t.actionError);
     } finally {
       setBusy("");
     }
   }
-  const paymentWindowClosed = Date.parse(i.expiresAt) <= Date.now();
-  const outstanding =
-    ["pending", "partial"].includes(i.status) && !paymentWindowClosed;
+  async function requestRefund(event) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy("refund");
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/invoices/${encodeURIComponent(i.id)}/refund-request`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": requestKey.current,
+          },
+          body: JSON.stringify({ address: refundAddress.trim() }),
+        },
+      );
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error?.message || `HTTP ${response.status}`);
+      await refresh();
+      onToast(t.refundCreated);
+      location.assign(walletUrl("merchant", "refund"));
+    } catch (err) {
+      setError(err.message || t.actionError);
+    } finally {
+      setBusy("");
+    }
+  }
+  const canPay =
+    i.paymentRequestAvailable === true && Date.parse(i.expiresAt) > Date.now();
   return (
     <>
       <div className="detail-top">
@@ -703,7 +803,10 @@ function Detail({
               height="184"
             />
             <div className="qr-caption">
-              DASH <span>REGTEST</span>
+              DASH{" "}
+              <span>
+                {status?.network === "regtest" ? "REGTEST" : "ATLAS DEVNET"}
+              </span>
             </div>
           </div>
           <CopyField
@@ -729,6 +832,12 @@ function Detail({
               <span>{t.confirmed}</span>
               <strong>{coin(i.confirmedAmount)} DASH</strong>
             </div>
+            {i.refundRequestId && (
+              <div>
+                <span>{t.requestedRefund}</span>
+                <strong>{coin(i.requestedRefundAmount)} DASH</strong>
+              </div>
+            )}
             {i.refundTxid && (
               <div>
                 <span>{t.refundedAmount}</span>
@@ -760,6 +869,14 @@ function Detail({
               onToast={onToast}
             />
           )}{" "}
+          {i.refundAddress && (
+            <CopyField
+              label={t.refundAddress}
+              value={i.refundAddress}
+              t={t}
+              onToast={onToast}
+            />
+          )}{" "}
           {i.refundTxid && (
             <CopyField
               label={t.refundTx}
@@ -771,65 +888,86 @@ function Detail({
         </div>
         <aside className="payment-controls">
           <div className="control-icon">
-            <FlaskConical size={22} />
+            <Wallet size={22} />
           </div>
           <h3>{t.testTools}</h3>
-          <p>{t.testToolsSub}</p>
+          {canPay && <p>{t.testToolsSub}</p>}
           {!connected && <div className="error">{t.connectionNeeded}</div>}
-          {outstanding && (
-            <Button
-              onClick={() => action("pay")}
-              disabled={!canTransfer || !!busy}
-              busy={busy === "pay"}
-            >
+          {canPay && (
+            <a className="button" href={walletUrl("customer", "payment")}>
               <Wallet size={17} />
-              {busy === "pay" ? t.paying : t.pay}
-            </Button>
+              {t.pay}
+              <ExternalLink size={14} />
+            </a>
           )}
           {["detected", "refund_pending"].includes(i.status) && (
             <Button
-              onClick={() => action("mine")}
+              onClick={mine}
               disabled={!connected || !!busy}
               busy={busy === "mine"}
             >
               <Blocks size={17} />
-              {busy === "mine"
-                ? t.confirming
-                : i.status === "refund_pending"
-                  ? t.confirmRefund
-                  : t.confirm}
+              {busy === "mine" ? t.confirming : t.mine}
             </Button>
           )}
-          {i.status === "paid" && (
-            <>
-              <div className="confirmed-box">
-                <ShieldCheck size={28} />
-                <strong>{t.paid}</strong>
-              </div>
-              <div className="refund-area">
-                <h4>{t.refundSection}</h4>
-                <p>{t.refundHint}</p>
-                <Button
-                  kind="secondary"
-                  onClick={() => action("refund")}
-                  disabled={!canTransfer || !!busy}
-                  busy={busy === "refund"}
-                >
-                  <RotateCcw size={16} />
-                  {busy === "refund" ? t.refunding : t.refund}
-                </Button>
-              </div>
-            </>
-          )}
-          {i.status === "refunded" && (
+          {["paid", "refunded"].includes(i.status) && (
             <div className="confirmed-box">
-              <Check size={28} />
-              <strong>{t.refunded}</strong>
+              <ShieldCheck size={27} />
+              <strong>{t[i.status]}</strong>
             </div>
           )}
-          {(i.status === "expired" ||
-            (i.status === "partial" && paymentWindowClosed)) && (
-            <p className="expired-control">{t.expiredNote}</p>
+          {i.refundRequestStatus === "awaiting_approval" && (
+            <div className="refund-area">
+              <h4>{t.awaitingRefundApproval}</h4>
+              <p>{t.refundCreated}</p>
+              <a
+                className="button secondary"
+                href={walletUrl("merchant", "refund")}
+              >
+                {t.openMerchantWallet}
+                <ExternalLink size={14} />
+              </a>
+            </div>
+          )}
+          {i.canRequestRefund && (
+            <div className="refund-area">
+              <h4>{t.refundSection}</h4>
+              <p>{t.refundHint}</p>
+              <form className="refund-form" onSubmit={requestRefund}>
+                <label htmlFor="refund-address">{t.refundAddress}</label>
+                <input
+                  id="refund-address"
+                  name="address"
+                  value={refundAddress}
+                  onChange={(e) => {
+                    setRefundAddress(e.target.value);
+                    requestKey.current = key();
+                  }}
+                  required
+                  autoComplete="off"
+                  spellCheck="false"
+                />
+                <small>{t.customerAddressHint}</small>
+                <a
+                  href="http://127.0.0.1:4174/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="checkout-link"
+                >
+                  {t.openCustomerWallet}
+                  <ExternalLink size={13} />
+                </a>
+                <Button
+                  type="submit"
+                  kind="secondary"
+                  disabled={!connected || !!busy || !refundAddress.trim()}
+                  busy={busy === "refund"}
+                >
+                  <RotateCcw size={15} />
+                  {busy === "refund" ? t.refunding : t.refund}
+                </Button>
+              </form>
+            </div>
           )}
           {error && (
             <div className="error" role="alert">
@@ -838,7 +976,7 @@ function Detail({
           )}
           <div className="control-footer">
             <ShieldCheck size={15} />
-            <span>{t.noLive}</span>
+            <span>{t.signingBoundary}</span>
           </div>
           {!checkout && (
             <a
@@ -980,7 +1118,7 @@ function App() {
   const testBanner = (
     <div className="test-banner">
       <FlaskConical size={14} />
-      <strong>{t.test}</strong>
+      <strong>{status?.network === "regtest" ? t.legacy : t.test}</strong>
       <span>{t.testNote}</span>
     </div>
   );
@@ -1117,7 +1255,11 @@ function App() {
               <Blocks size={19} />
             </div>
             <div>
-              <strong>Dash regtest</strong>
+              <strong>
+                {status?.network === "regtest"
+                  ? "Dash regtest"
+                  : "Atlas devnet"}
+              </strong>
               <span>{status?.connected ? t.connected : t.disconnected}</span>
             </div>
             <i className={status?.connected ? "online-dot" : "offline-dot"} />
@@ -1255,7 +1397,9 @@ function App() {
                     </div>
                     <div className="stat-value">
                       {status?.blockHeight?.toLocaleString() ?? "—"}
-                      <small className="block-tag">REGTEST</small>
+                      <small className="block-tag">
+                        {status?.network === "regtest" ? "REGTEST" : "DEVNET"}
+                      </small>
                     </div>
                     <div className="stat-note">
                       {t.currentBlock}
@@ -1426,7 +1570,11 @@ function App() {
                       </div>
                       <div>
                         <h3>{t.network}</h3>
-                        <span>Dash Core · Regtest</span>
+                        <span>
+                          {status?.network === "regtest"
+                            ? "Dash Core · Regtest"
+                            : "Atlas · atlas-local-v1"}
+                        </span>
                       </div>
                       <span
                         className={
@@ -1441,12 +1589,10 @@ function App() {
                         {status?.balances?.merchant ?? "—"} <small>DASH</small>
                       </strong>
                     </div>
-                    <div className="balance-row">
-                      <span>{t.payerBalance}</span>
-                      <strong>
-                        {status?.balances?.payer ?? "—"} <small>DASH</small>
-                      </strong>
-                    </div>
+                    <a className="checkout-link" href="http://127.0.0.1:4174/">
+                      {t.openCustomerWallet}
+                      <ExternalLink size={14} />
+                    </a>
                     <Button
                       kind="secondary"
                       onClick={mine}
@@ -1538,4 +1684,6 @@ function Flow({ t }) {
     </section>
   );
 }
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(
+  ["4174", "4175"].includes(location.port) ? <WalletApp /> : <App />,
+);

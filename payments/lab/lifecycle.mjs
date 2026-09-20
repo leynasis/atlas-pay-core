@@ -23,12 +23,14 @@ import {
   LAB_DIR,
   LAB_NAME,
   MINIMUM_DIFFICULTY_BLOCKS,
+  MERCHANT_API_METHODS,
+  MERCHANT_API_CREDENTIALS_PATH,
   NODE_IDS,
   NODES,
   READ_ONLY_METHODS,
   getNode,
 } from "./config.mjs";
-import { assertLabNode, rpc } from "./rpc.mjs";
+import { assertLabNode, inspectNode, rpc } from "./rpc.mjs";
 
 const exec = promisify(execFile);
 const fundingJournalPath = join(LAB_DIR, "funding.json");
@@ -75,6 +77,38 @@ async function prepareNode(nodeId) {
   const digest = createHmac("sha256", credential.salt)
     .update(credential.password)
     .digest("hex");
+  const merchantAuth = [];
+  if (nodeId === "merchant") {
+    await mkdir(join(LAB_DIR, "merchant-api"), {
+      recursive: true,
+      mode: 0o700,
+    });
+    let apiCredential;
+    try {
+      apiCredential = JSON.parse(
+        await readFile(MERCHANT_API_CREDENTIALS_PATH, "utf8"),
+      );
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      apiCredential = {
+        username: "atlas_merchant_api",
+        password: randomBytes(32).toString("hex"),
+        salt: randomBytes(16).toString("hex"),
+      };
+      await writeFile(
+        MERCHANT_API_CREDENTIALS_PATH,
+        JSON.stringify(apiCredential),
+        { mode: 0o600 },
+      );
+    }
+    const apiDigest = createHmac("sha256", apiCredential.salt)
+      .update(apiCredential.password)
+      .digest("hex");
+    merchantAuth.push(
+      `rpcauth=${apiCredential.username}:${apiCredential.salt}$${apiDigest}`,
+      `rpcwhitelist=${apiCredential.username}:${MERCHANT_API_METHODS.join(",")}`,
+    );
+  }
   const config = [
     `devnet=${LAB_NAME}`,
     "server=1",
@@ -95,6 +129,7 @@ async function prepareNode(nodeId) {
     `rpcauth=${credential.username}:${credential.salt}$${digest}`,
     "rpcwhitelistdefault=0",
     `rpcwhitelist=${credential.username}:${READ_ONLY_METHODS.join(",")}`,
+    ...merchantAuth,
     "[devnet]",
     "connect=0",
     "listen=1",
@@ -120,6 +155,7 @@ export async function startNode(nodeId) {
     if (
       error.message.includes("identity mismatch") ||
       error.message.includes("isolation") ||
+      error.code === "LAB_PEER_HANDSHAKE_PENDING" ||
       error.status === 401 ||
       error.status === 403
     )
@@ -164,38 +200,67 @@ export async function stopNode(nodeId) {
     if (error.code === "ENOENT" || error.cause?.code === "ECONNREFUSED") return;
     throw error;
   }
+  const pid = Number((await readFile(getNode(nodeId).pidPath, "utf8")).trim());
   await rpc(nodeId, "stop");
   await waitUntil(async () => {
     try {
       await readFile(getNode(nodeId).cookiePath);
       return false;
     } catch (error) {
-      if (error.code === "ENOENT") return true;
+      if (error.code === "ENOENT") {
+        // Cookie removal precedes final wallet flush and datadir lock release.
+        try {
+          process.kill(pid, 0);
+          return false;
+        } catch (processError) {
+          if (processError.code === "ESRCH") return true;
+          throw processError;
+        }
+      }
       throw error;
     }
   }, `Lab node ${nodeId} did not stop.`);
 }
 
-export async function connectLab() {
+export async function connectLab({ transport = rpc, timeout = 30000 } = {}) {
+  if (!Number.isSafeInteger(timeout) || timeout < 1 || timeout > 30000)
+    throw new Error("Lab connection timeout must be between 1 and 30000 ms.");
+  const deadline = Date.now() + timeout;
+  const timeoutMessage = "Local lab peer links did not become ready.";
+  const remaining = () => Math.max(0, deadline - Date.now());
+  const inspectReadyNode = async (id) => {
+    try {
+      return await inspectNode(id, transport);
+    } catch (error) {
+      if (error.code === "LAB_PEER_HANDSHAKE_PENDING") return null;
+      throw error;
+    }
+  };
   // A directed triangle gives each node two local peers without address discovery.
   for (let i = 0; i < NODE_IDS.length; i++) {
     const id = NODE_IDS[i];
     const target = NODES[NODE_IDS[(i + 1) % NODE_IDS.length]];
-    const info = await assertLabNode(id);
+    let info;
+    await waitUntil(
+      async () => Boolean((info = await inspectReadyNode(id))),
+      timeoutMessage,
+      remaining(),
+    );
     if (
       !info.peers.some(
         (peer) => !peer.inbound && peer.addr === `127.0.0.1:${target.p2pPort}`,
       )
     ) {
-      await rpc(id, "addnode", [`127.0.0.1:${target.p2pPort}`, "onetry"]);
+      await transport(id, "addnode", [`127.0.0.1:${target.p2pPort}`, "onetry"]);
     }
   }
   await waitUntil(
     async () =>
-      (await Promise.all(NODE_IDS.map((id) => assertLabNode(id)))).every(
-        (info) => info.peers.length >= 2,
+      (await Promise.all(NODE_IDS.map(inspectReadyNode))).every(
+        (info) => info !== null && info.peers.length >= 2,
       ),
-    "Local lab peer links did not become ready.",
+    timeoutMessage,
+    remaining(),
   );
 }
 

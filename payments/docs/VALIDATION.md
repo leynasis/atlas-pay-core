@@ -1,68 +1,28 @@
-# Prototype validation
+# Prototype validation — v0.3
 
-Validated on 20 September 2026 (Asia/Baku), macOS ARM64, Node.js 25.6.1,
-using the checksum-verified official Dash Core 23.1.8 binary. All coin
-movements used local test chains and valueless test coins.
+Validated on 20 September 2026 (Asia/Baku), macOS ARM64, Node.js 25.6.1, with the checksum-verified official Dash Core 23.1.8 runtime. All transfers used local chains and valueless test coins.
 
 ## Automated checks
 
-- `npm test`: 27 tests passed for version 0.2.0. Coverage includes exact decimal amounts,
-  persisted idempotency, uncertain RPC outcomes across restarts, partial and
-  excess payments, expiry (including overdue partial payments), late receipts,
-  reorganizations, refund exceptions, network identity/isolation, restricted
-  monitoring, HTTP boundaries, PSBT policy, explicit approval, signing recovery,
-  cancellation and live confirmation status.
-- `npm run test:lab`: 8 checks passed against three actual named-devnet nodes,
-  including fixed chain identity/subsidy, daemon-enforced read-only credentials,
-  role-wallet separation, repeat startup, block relay, restart/catch-up and
-  convergence after a partition with competing branches. The original regtest
-  tip remained unchanged throughout these checks.
-- `npm run test:signer`: 8 checks passed using actual PSBTs and devnet wallet
-  transactions. These include tampered requests/outputs/fees, declined approval,
-  a real broadcast with simulated lost response, SQLite restart reconciliation,
-  merchant receipt and unsigned reservation cancellation.
-- The first milestone's `npm run test:integration` passed 13 regtest checks.
-  These verify actual wallet transactions, confirmations, a distinct refund
-  transaction received by the payer, partial and excess payments, block
-  invalidation/reconsideration, and additional funds arriving after a refund.
-- `npm run build` and `npm run check:format`: passed.
-- `npm audit`: reported no known dependency vulnerabilities at validation time.
+- `npm test`: 45 application unit and HTTP tests passed. They cover decimal amounts, persistence, idempotency, network identity, PSBT policy, explicit approval, partial/late/excess payments, reorgs, refund proof and recovery. The v0.3 additions exercise role-specific HTTP sessions/CSRF, stale request rejection, receipt retries after transient errors or interrupted journals, dropped/refound refunds and unconfirmed change accounting. Three regressions cover the peer-handshake wait and strict rejection of invalid peers.
+- `npm run test:integration`: 11 grouped live checks connect all three apps to devnet. They verify the daemon itself rejects merchant signing/sending/key export, create an immutable invoice, enforce HTTP/role/fingerprint boundaries, explicitly sign a customer payment, confirm the receipt, restore a fresh session, create and sign a distinct full refund, verify actual customer receipt, replay without another transaction, cancel an unsigned request and reject approval after an external partial payment.
+- `npm run test:signer`: 8 live checks passed, including actual PSBT tampering, declined approval, a real broadcast with a simulated lost response, SQLite restart recovery, exact merchant receipt and unsigned reservation cancellation.
+- `npm run test:lab`: all 8 live checks passed for three-node identity/subsidy, daemon-enforced limited monitoring, wallet separation, repeat startup, block relay, restart/catch-up and partition/rejoin checks. A reconnect run exposed an unfinished peer-handshake race; the lifecycle wait was corrected without relaxing monetary-operation identity checks.
+- The first milestone passed 13 legacy regtest checks. These remain available as `npm run test:legacy` against API port 4180; they are distinct from the v0.3 devnet checkout suite.
+- Production frontend build and formatting checks passed. `npm audit` reported no known dependency vulnerabilities at validation time.
+- The upstream lint runner was invoked with `COMMIT_RANGE=HEAD` for the shallow checkout. Optional codespell, vulture, cppcheck, flake8 and shellcheck checks were skipped because those tools are absent.
 
-Reports live in `.runtime/integration-report.json`,
-`.runtime/lab/integration-report.json` and
-`.runtime/signer/integration-report.json`. Reports and wallet data are excluded
-from Git. The checks leave test invoices and transactions for inspection.
-Lab lifecycle and signer integration tests must run serially.
+Live reports are stored under ignored `.runtime/` directories (`checkout-integration-report.json`, `lab/integration-report.json`, `signer/integration-report.json`). Tests leave test invoices/transactions for inspection. Network-mutating integration suites must run serially.
 
-## Browser and lifecycle checks
+## Browser and restart checks
 
-- Created an invoice, opened its payment page, sent test coins, confirmed the
-  payment, issued a refund and confirmed the refund through the interface.
-- Checked the merchant workspace and checkout at desktop and 390-pixel mobile
-  width, with no document-level horizontal overflow.
-- Checked Russian and English UI, QR display, persisted invoice state after an
-  API restart, and a prominent review warning for post-refund incoming funds.
-- Observed no browser console warnings or errors in the final desktop check.
-- Stopped and restarted the local node; wallets and chain data persisted.
-- Checked the new Network page in Russian and English, including 390-pixel
-  width, peer details and navigation back to the separate regtest dashboard.
-- Stopped the merchant devnet node: the page showed 2/3 available and no common
-  tip. After restart and reconnection it returned to 3/3 synchronized nodes.
-- Independently exercised the actual interactive signing CLI, including typed
-  transaction-specific approval. The merchant received exactly 0.125 test DASH;
-  the fee was 0.00000225. Live signer status reported one confirmation.
-- The first manually mined block preceded transaction relay and did not include
-  that CLI payment. After the transaction reached the miner's mempool, a later
-  block confirmed it. Broadcast and confirmation are intentionally separate.
+- Created a 0.05 test-DASH invoice through the merchant interface, opened checkout and moved to the separate customer wallet. Preparation showed the exact recipient, amount, fee of 0.00000225, total, change and pinned network. An explicit button signed and sent it.
+- The merchant detected the actual payment; the invoice's test-block action confirmed it. An explicit customer receiving address was then entered for the refund. The separate merchant wallet reviewed and signed a new transaction. The invoice showed the refund confirmed after another test block.
+- The browser payment txid was `6fd7c367ffdeb5880218b7739d3117f0015159281e7173820ac7e7807e5acabc`; its separate refund was `184951805965c139d97a97e6cb306c7c8b95de6baafc56160d82581329dfab50`.
+- Reloading the customer wallet restored the existing request and confirmed transaction without any new signature. Restarting all three app processes preserved the refunded invoice and the original customer transaction.
+- Checked Russian and English checkout/wallet text, QR display, desktop layout, and 390-pixel wallet/checkout/merchant layouts. No document-level horizontal overflow was observed. The final checked browser console had no warnings or errors.
+- Independent code review found and fixed receipt-retry key poisoning, missing recovery UI for interrupted broadcasting, stale status for an evicted refund and omitted unconfirmed change. Regression tests cover the server cases; retry remains an explicit same-transaction action.
 
 ## Scope of evidence
 
-This is application-level validation, not an independent security audit.
-No fork-specific C++ client has been built; no C++ consensus source changes were made.
-Dash's full C++ and functional test suites were not run. No independently operated network,
-masternode quorum, InstantSend, ChainLocks, throughput benchmark, real custody,
-fiat integration or public deployment was tested.
-
-The upstream lint runner is also invoked with an explicit `COMMIT_RANGE` because
-the initial local checkout is shallow. Its optional codespell, vulture, cppcheck,
-flake8 and shellcheck checks are skipped when those tools are unavailable.
+This is application-level validation, not an independent security audit. No fork-specific C++ client has been built and no C++ consensus changes were made. Dash's full C++/functional test suites were not run. There is no independently operated network, masternode quorum, InstantSend, ChainLocks, throughput benchmark, production custody, fiat integration or public deployment in this evidence.

@@ -1,9 +1,9 @@
 {
   "name": "atlas-pay-lab",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Dash-based payment workspace with real isolated regtest transactions",
+  "description": "Local Atlas devnet payments with separate customer and merchant signing wallets",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -20,15 +20,20 @@
     "signer": "node signer/cli.mjs",
     "dev": "vite --config web/vite.config.js",
     "build": "vite build --config web/vite.config.js",
-    "start": "node server/index.mjs",
-    "start:dev": "ATLAS_DEV_ORIGIN=http://127.0.0.1:5173 node server/index.mjs",
+    "start": "node start.mjs",
+    "start:dev": "ATLAS_DEV_ORIGIN=http://127.0.0.1:5173 node start.mjs",
+    "start:merchant": "node merchant/index.mjs",
+    "start:customer-wallet": "node wallet/index.mjs customer",
+    "start:merchant-wallet": "node wallet/index.mjs merchant",
+    "legacy:api": "node server/index.mjs",
     "test": "node --test tests/*.test.mjs",
-    "test:integration": "node tests/integration.mjs",
+    "test:integration": "node tests/checkout-integration.mjs",
+    "test:legacy": "node tests/integration.mjs",
     "test:lab": "node tests/lab-integration.mjs",
     "test:signer": "node tests/signer-integration.mjs",
-    "format": "prettier --write \"{server,network,lab,signer,tests}/**/*.mjs\" \"web/src/**/*.{jsx,css}\" web/vite.config.js",
-    "check:format": "prettier --check \"{server,network,lab,signer,tests}/**/*.mjs\" \"web/src/**/*.{jsx,css}\" web/vite.config.js",
-    "demo": "npm run network:start && npm run build && npm start"
+    "format": "prettier --write start.mjs \"{server,network,lab,signer,merchant,wallet,tests}/**/*.mjs\" \"web/src/**/*.{jsx,css}\" web/vite.config.js",
+    "check:format": "prettier --check start.mjs \"{server,network,lab,signer,merchant,wallet,tests}/**/*.mjs\" \"web/src/**/*.{jsx,css}\" web/vite.config.js",
+    "demo": "npm run lab:start && npm run build && npm start"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

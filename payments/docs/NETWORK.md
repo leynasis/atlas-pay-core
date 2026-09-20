@@ -1,6 +1,8 @@
-# Isolated Dash regtest
+# Legacy isolated Dash regtest
 
-This prototype runs the **official, prebuilt Dash Core 23.1.8 release**, not a locally compiled or independently audited fork client. The repository contains the upstream source for further development. These scripts leave consensus unchanged and operate exclusively on an isolated regtest chain. Regtest coins have no monetary value.
+The v0.3 default payment UI uses [the three-node devnet](LAB.md). This document covers only the optional older regtest API on port 4180.
+
+This legacy environment runs the **official, prebuilt Dash Core 23.1.8 release**, not a locally compiled or independently audited fork client. The repository contains the upstream source for further development. These scripts leave consensus unchanged and operate exclusively on an isolated regtest chain. Regtest coins have no monetary value.
 
 ## Requirements and commands
 

@@ -4,6 +4,8 @@ import {
   DEVNET_GENESIS_HASH,
   EXPECTED_CHAIN,
   GENESIS_HASH,
+  MERCHANT_API_METHODS,
+  MERCHANT_API_CREDENTIALS_PATH,
   NODES,
   READ_ONLY_METHODS,
   getNode,
@@ -84,6 +86,25 @@ export async function readOnlyRpc(nodeId, method, params = []) {
   );
 }
 
+export async function merchantReadRpc(
+  method,
+  params = [],
+  wallet = "merchant",
+) {
+  if (!MERCHANT_API_METHODS.includes(method) || wallet !== "merchant")
+    throw new Error("Merchant API RPC method or wallet is not allowed.");
+  const credential = JSON.parse(
+    await readFile(MERCHANT_API_CREDENTIALS_PATH, "utf8"),
+  );
+  return request(
+    "merchant",
+    method,
+    params,
+    wallet,
+    `${credential.username}:${credential.password}`,
+  );
+}
+
 export function verifyIdentity(chain, genesis, devnetGenesis) {
   if (
     chain !== EXPECTED_CHAIN ||
@@ -102,18 +123,33 @@ export function verifyPeers(nodeId, peers) {
   const expectedDestinations = Object.values(NODES)
     .filter((node) => node.id !== nodeId)
     .map((node) => `127.0.0.1:${node.p2pPort}`);
+  let handshakePending = false;
   for (const peer of peers) {
     // An incoming TCP source port is ephemeral, not the peer's listening port.
     // Only loopback is accepted; outbound peers must use exact pinned ports.
     if (
+      !peer ||
+      typeof peer.addr !== "string" ||
       !/^127\.0\.0\.1:\d+$/.test(peer.addr) ||
+      typeof peer.inbound !== "boolean" ||
       (!peer.inbound && !expectedDestinations.includes(peer.addr)) ||
-      !peer.subver?.split(/[();\s]+/).includes(`devnet.${EXPECTED_CHAIN}`)
+      typeof peer.subver !== "string" ||
+      (peer.subver !== "" &&
+        !peer.subver.split(/[();\s]+/).includes(`devnet.${EXPECTED_CHAIN}`))
     ) {
       throw new Error(
         "Lab peer isolation failed: peer is outside the local named-devnet allowlist.",
       );
     }
+    // getpeerinfo exposes a connected socket before VERSION fills cleanSubVer.
+    // Keep monetary guards closed; only lifecycle connection waits may retry.
+    if (peer.subver === "") handshakePending = true;
+  }
+  // Check every peer first: an unfinished handshake must not hide a bad peer.
+  if (handshakePending) {
+    const error = new Error("Lab peer handshake is not complete.");
+    error.code = "LAB_PEER_HANDSHAKE_PENDING";
+    throw error;
   }
 }
 

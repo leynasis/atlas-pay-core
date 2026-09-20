@@ -52,6 +52,7 @@ export function createApplication({
 
 export async function start() {
   const app = createApplication({
+    staticDir: resolve(paymentsRoot, ".runtime/legacy-api-only"),
     developmentOrigin: process.env.ATLAS_DEV_ORIGIN,
   });
   // Fail closed before serving monetary actions. A disconnected node still gets a useful
@@ -59,10 +60,10 @@ export async function start() {
   const status = await app.service.status();
   await new Promise((done, reject) => {
     app.server.once("error", reject);
-    app.server.listen(4173, "127.0.0.1", done);
+    app.server.listen(4180, "127.0.0.1", done);
   });
   console.log(
-    `Atlas Pay: http://127.0.0.1:4173 (${status.connected ? `regtest block ${status.blockHeight}` : status.error})`,
+    `Legacy regtest API: http://127.0.0.1:4180 (${status.connected ? `regtest block ${status.blockHeight}` : status.error})`,
   );
   let closing = false;
   const stop = async () => {

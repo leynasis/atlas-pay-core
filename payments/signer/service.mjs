@@ -13,14 +13,32 @@ import {
 } from "./policy.mjs";
 
 export class CustomerSigner {
-  constructor({ rpc, assertNode, identity, store, now = () => Date.now() }) {
+  constructor({
+    rpc,
+    assertNode,
+    identity,
+    store,
+    now = () => Date.now(),
+    role = "customer",
+  }) {
+    requirePolicy(
+      ["customer", "merchant"].includes(role),
+      "WRONG_ROLE",
+      "Unsupported signer role.",
+    );
+    this.role = role;
     this.rpc = rpc;
     this.assertNode = assertNode;
     this.identity = identity;
     this.store = store;
     this.now = now;
   }
-  async checkNetwork(node = "customer") {
+  async checkNetwork(node = this.role) {
+    requirePolicy(
+      node === this.role,
+      "WRONG_ROLE",
+      "Signer cannot access another role.",
+    );
     if (this.assertNode) await this.assertNode(node);
     const chain = await this.rpc(node, "getblockchaininfo");
     const [genesisHash, devnetGenesisHash] = await Promise.all([
@@ -43,6 +61,7 @@ export class CustomerSigner {
       changeAddress: record.changeAddress,
       identity: this.identity,
       rpc: this.rpc,
+      role: this.role,
       now: this.now(),
       expectedTemplateHash: record.templateHash,
     });
@@ -50,6 +69,7 @@ export class CustomerSigner {
   review(record) {
     return {
       id: record.id,
+      role: this.role,
       state: record.state,
       merchantName: record.request.merchantName,
       description: record.request.description,
@@ -92,10 +112,10 @@ export class CustomerSigner {
       let transaction;
       try {
         transaction = await this.rpc(
-          "customer",
+          this.role,
           "gettransaction",
           [record.txid],
-          "customer",
+          this.role,
         );
       } catch (error) {
         if (error.code === -5 || error.rpcCode === -5) return result;
@@ -119,7 +139,7 @@ export class CustomerSigner {
         result.inMempool = false;
       } else {
         try {
-          await this.rpc("customer", "getmempoolentry", [record.txid]);
+          await this.rpc(this.role, "getmempoolentry", [record.txid]);
           result.confirmationState = "pending";
           result.inMempool = true;
         } catch (error) {
@@ -142,7 +162,7 @@ export class CustomerSigner {
               ? "WRONG_NETWORK"
               : "CHAIN_UNAVAILABLE",
           message:
-            "The pinned customer chain or wallet is unavailable. The saved journal state is shown without assuming confirmation.",
+            "The pinned signing chain or wallet is unavailable. The saved journal state is shown without assuming confirmation.",
         },
       };
     }
@@ -160,7 +180,7 @@ export class CustomerSigner {
       requirePolicy(
         !["preparing", "preparation_uncertain"].includes(existing.state),
         "PREPARATION_UNCERTAIN",
-        "Preparation did not finish. Inspect customer wallet reservations before continuing.",
+        "Preparation did not finish. Inspect signing wallet reservations before continuing.",
       );
       return this.review(existing);
     }
@@ -174,13 +194,13 @@ export class CustomerSigner {
     this.store.create(record);
     try {
       const changeAddress = await this.rpc(
-        "customer",
+        this.role,
         "getrawchangeaddress",
         [],
-        "customer",
+        this.role,
       );
       const funded = await this.rpc(
-        "customer",
+        this.role,
         "walletcreatefundedpsbt",
         [
           [],
@@ -197,7 +217,7 @@ export class CustomerSigner {
           },
           false,
         ],
-        "customer",
+        this.role,
       );
       Object.assign(record, { changeAddress, psbt: funded.psbt });
       const inspected = await this.inspect(record);
@@ -205,10 +225,10 @@ export class CustomerSigner {
       // Upgrade exactly this draft's temporary locks to persistent locks. Never unlock
       // all wallet coins: other drafts may own other reservations.
       await this.rpc(
-        "customer",
+        this.role,
         "lockunspent",
         [false, inspected.outpoints, true],
-        "customer",
+        this.role,
       );
       record.fingerprint = digest({
         requestHash: request.requestHash,
@@ -231,7 +251,7 @@ export class CustomerSigner {
     requirePolicy(
       typeof decide === "function",
       "APPROVAL_REQUIRED",
-      "A customer approval decision is required.",
+      "A wallet owner approval decision is required.",
     );
     let record = this.required(id);
     if (record.state === "broadcast") return this.review(record);
@@ -265,7 +285,7 @@ export class CustomerSigner {
       this.store.put(record);
       throw new SignerError(
         "APPROVAL_DENIED",
-        "Customer declined; no transaction was signed or broadcast.",
+        "Wallet owner declined; no transaction was signed or broadcast.",
       );
     }
     try {
@@ -276,17 +296,17 @@ export class CustomerSigner {
         record.state = "signing";
         this.store.put(record);
         const signed = await this.rpc(
-          "customer",
+          this.role,
           "walletprocesspsbt",
           [record.psbt, true, "ALL", false, true],
-          "customer",
+          this.role,
         );
         requirePolicy(
           signed.complete,
           "INCOMPLETE_SIGNATURES",
-          "The customer wallet could not sign every input.",
+          "The signing wallet could not sign every input.",
         );
-        const finalized = await this.rpc("customer", "finalizepsbt", [
+        const finalized = await this.rpc(this.role, "finalizepsbt", [
           signed.psbt,
           true,
         ]);
@@ -295,7 +315,7 @@ export class CustomerSigner {
           "INCOMPLETE_SIGNATURES",
           "PSBT could not be finalized.",
         );
-        const transaction = await this.rpc("customer", "decoderawtransaction", [
+        const transaction = await this.rpc(this.role, "decoderawtransaction", [
           finalized.hex,
         ]);
         requirePolicy(
@@ -314,7 +334,7 @@ export class CustomerSigner {
         record.approvedAt = new Date(this.now()).toISOString();
         this.store.put(record);
       } else {
-        const transaction = await this.rpc("customer", "decoderawtransaction", [
+        const transaction = await this.rpc(this.role, "decoderawtransaction", [
           record.rawHex,
         ]);
         requirePolicy(
@@ -328,7 +348,7 @@ export class CustomerSigner {
       }
       await this.checkNetwork();
       validateRequest(record.request, this.identity, this.now());
-      const [acceptance] = await this.rpc("customer", "testmempoolaccept", [
+      const [acceptance] = await this.rpc(this.role, "testmempoolaccept", [
         [record.rawHex],
         "0.0001",
       ]);
@@ -340,7 +360,7 @@ export class CustomerSigner {
       record.state = "broadcasting";
       this.store.put(record);
       try {
-        const txid = await this.rpc("customer", "sendrawtransaction", [
+        const txid = await this.rpc(this.role, "sendrawtransaction", [
           record.rawHex,
           "0.0001",
         ]);
@@ -371,12 +391,7 @@ export class CustomerSigner {
 
   async knownTransaction(txid) {
     try {
-      const tx = await this.rpc(
-        "customer",
-        "gettransaction",
-        [txid],
-        "customer",
-      );
+      const tx = await this.rpc(this.role, "gettransaction", [txid], this.role);
       if (
         tx.confirmations < 0 ||
         tx.abandoned ||
@@ -384,7 +399,7 @@ export class CustomerSigner {
       )
         return false;
       if (tx.confirmations >= 1) return true;
-      await this.rpc("customer", "getmempoolentry", [txid]);
+      await this.rpc(this.role, "getmempoolentry", [txid]);
       return true;
     } catch (error) {
       if (error.code === -5 || error.rpcCode === -5) return false;
@@ -404,19 +419,14 @@ export class CustomerSigner {
     );
     await this.checkNetwork();
     record = this.store.claim(id, ["prepared", "cancelling"], "cancelling");
-    const locked = await this.rpc(
-      "customer",
-      "listlockunspent",
-      [],
-      "customer",
-    );
+    const locked = await this.rpc(this.role, "listlockunspent", [], this.role);
     const ownLocks = record.outpoints.filter((point) =>
       locked.some(
         (item) => point.txid === item.txid && point.vout === item.vout,
       ),
     );
     if (ownLocks.length)
-      await this.rpc("customer", "lockunspent", [true, ownLocks], "customer");
+      await this.rpc(this.role, "lockunspent", [true, ownLocks], this.role);
     record.state = "cancelled";
     this.store.put(record);
     return this.review(record);
@@ -441,7 +451,12 @@ export async function createPaymentRequest({
     "INVALID_REQUEST",
     "Expiry must be 1–10080 minutes.",
   );
-  const verifier = new CustomerSigner({ rpc, assertNode, identity });
+  const verifier = new CustomerSigner({
+    rpc,
+    assertNode,
+    identity,
+    role: "merchant",
+  });
   await verifier.checkNetwork("merchant");
   const id = randomUUID();
   const address = await rpc(

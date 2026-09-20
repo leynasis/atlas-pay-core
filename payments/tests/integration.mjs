@@ -6,7 +6,7 @@ import { RUNTIME_DIR } from "../network/config.mjs";
 import { join } from "node:path";
 import { parseAmount } from "../server/money.mjs";
 
-const base = "http://127.0.0.1:4173";
+const base = "http://127.0.0.1:4180";
 const results = [];
 async function api(
   path,

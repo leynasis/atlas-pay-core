@@ -26,11 +26,7 @@ Build the fork from source and validate independent nodes against identical gene
 
 ## Milestone 3 — Non-custodial payment integration
 
-Implemented toward this milestone: a separate customer-node PSBT signing CLI,
-exact transaction review, explicit approval, durable broadcast recovery and
-unsigned draft cancellation. The existing web invoice demo is still regtest
-and server-funded. Public checkout integration, authenticated merchant requests,
-merchant watch-only operation and customer device isolation are not complete.
+Implemented toward this milestone in v0.3: devnet merchant invoices, separate customer and merchant browser wallets with explicit PSBT review/approval, immutable payment/refund requests, durable broadcast recovery, unsigned cancellation and independently verified refund receipts. The CLI shares the customer signing journal. All processes remain on one local machine. Authenticated merchant requests, actual watch-only infrastructure, device isolation, wallet backup and public checkout are not complete.
 
 Use customer-controlled signing and merchant watch-only infrastructure. Design wallet backup/recovery and hardware signing integration. Add authenticated merchant accounts, public read-only invoice capabilities, signed expiring payment requests, webhooks with replay protection and idempotency, rate limits, audit records, and merchant-directed refunds. Keep private invoice metadata out of public chain storage.
 

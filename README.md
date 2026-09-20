@@ -2,10 +2,10 @@
 
 A Dash Core fork with a working local payment workspace: merchant invoices,
 QR checkout, real test transactions, durable payment tracking and explicit refunds.
-An additional three-node named devnet includes live network monitoring and a
-separate customer-signing CLI prototype.
+Version 0.3 runs invoices on a three-node named devnet, with separate browser
+wallets for customer payment and merchant-approved refunds.
 
-**Current stage: local regtest and named-devnet prototypes.** No live funds, public mainnet,
+**Current stage: local named-devnet payment prototype.** No live funds, public mainnet,
 fiat conversion or worldwide merchant service are launched by this repository.
 Atlas Pay is a provisional project name.
 

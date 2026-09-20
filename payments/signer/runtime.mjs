@@ -31,12 +31,19 @@ export async function labContext(role) {
   return { rpc, assertNode, identity };
 }
 
-export async function openCustomerSigner() {
-  const context = await labContext("customer");
+export async function openRoleSigner(role = "customer") {
+  requirePolicy(
+    ["customer", "merchant"].includes(role),
+    "WRONG_ROLE",
+    "Unsupported signer role.",
+  );
+  const context = await labContext(role);
   const store = new SignerStore(
     fileURLToPath(
-      new URL("../.runtime/signer/customer.sqlite", import.meta.url),
+      new URL(`../.runtime/signer/${role}.sqlite`, import.meta.url),
     ),
   );
-  return { signer: new CustomerSigner({ ...context, store }), store };
+  return { signer: new CustomerSigner({ ...context, store, role }), store };
 }
+
+export const openCustomerSigner = () => openRoleSigner("customer");

@@ -20,6 +20,22 @@ export const READ_ONLY_METHODS = Object.freeze([
   "getpeerinfo",
   "getblockhash",
 ]);
+export const MERCHANT_API_METHODS = Object.freeze([
+  ...READ_ONLY_METHODS,
+  "getnewaddress",
+  "getbalance",
+  "listreceivedbyaddress",
+  "gettransaction",
+  "getmempoolentry",
+  "getaddressinfo",
+  "validateaddress",
+  "decoderawtransaction",
+]);
+export const MERCHANT_API_CREDENTIALS_PATH = join(
+  LAB_DIR,
+  "merchant-api",
+  "credentials.json",
+);
 
 export const NODES = Object.freeze(
   Object.fromEntries(

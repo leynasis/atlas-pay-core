@@ -1,6 +1,6 @@
 # Atlas Pay — Dash payment network development
 
-Atlas Pay is a working name for an early payment-system fork of Dash Core. The first deliverable is a real local payment flow on an isolated **regtest blockchain**, with a merchant workspace and customer checkout. The next development stage adds a separate three-node named devnet, read-only network monitoring and a customer-signing CLI prototype.
+Atlas Pay is a working name for an early payment-system fork of Dash Core. Version 0.3 connects a merchant workspace and checkout to the three-node `atlas-local-v1` devnet. Separate browser wallets prepare, review and explicitly sign customer payments and merchant refunds. The original isolated regtest prototype remains available as a legacy API with separate data.
 
 **Status:** development prototype. It is not a public mainnet, a live global payment service, a new issued asset, or a production custody system. The original Dash consensus has not been modified. The runtime uses the verified official Dash Core binary matching the source baseline.
 
