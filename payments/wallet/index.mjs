@@ -12,7 +12,7 @@ const server = createWalletServer({
   staticDir: fileURLToPath(new URL("../web/dist", import.meta.url)),
 });
 server.listen(port, "127.0.0.1", () =>
-  console.log(`Atlas ${role} wallet: http://127.0.0.1:${port}`),
+  console.log(`LAVEPAY ${role} wallet: http://127.0.0.1:${port}`),
 );
 server.on("error", (error) => {
   console.error(`Wallet listener failed: ${error.code || "ERROR"}`);

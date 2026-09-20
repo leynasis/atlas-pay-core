@@ -711,3 +711,57 @@ test("Merchant HTTP has no spending routes and protects mutations, checkout QR a
     0,
   );
 });
+
+test("LAVE currency follows immutable network identity and a legacy ledger cannot be reopened as LAVE", async (t) => {
+  const { service: atlas, store, node } = setup(t);
+  const key = randomUUID();
+  const historical = await atlas.createInvoice(input, key);
+  const originalRequest = await atlas.paymentRequest(historical.invoice.id);
+  assert.equal(historical.invoice.currency, "DASH");
+  assert.match(historical.invoice.paymentUri, /^dash:/);
+  assert.equal((await atlas.status()).currency, "DASH");
+  const laveIdentity = {
+    chain: "devnet-lave-local-v1",
+    devnetName: "lave-local-v1",
+    genesisHash: "2".repeat(64),
+    devnetGenesisHash: "3".repeat(64),
+    currency: "LAVE",
+  };
+  const reopen = new MerchantService({
+    rpc: node.rpc,
+    assertNetwork: async () => ({ ...laveIdentity, blocks: 123 }),
+    identity: laveIdentity,
+    store,
+    now: () => node.now,
+  });
+  node.calls.length = 0;
+  await assert.rejects(
+    reopen.getInvoice(historical.invoice.id),
+    code("WRONG_NETWORK"),
+  );
+  await assert.rejects(reopen.createInvoice(input, key), code("WRONG_NETWORK"));
+  assert.equal(node.calls.length, 0);
+  assert.deepEqual(
+    store.get(historical.invoice.id)._paymentRequest,
+    originalRequest,
+  );
+
+  const laveStore = new MerchantStore(":memory:");
+  t.after(() => laveStore.close());
+  const lave = new MerchantService({
+    rpc: node.rpc,
+    assertNetwork: async () => ({ ...laveIdentity, blocks: 123 }),
+    identity: laveIdentity,
+    store: laveStore,
+    now: () => node.now,
+  });
+  const fresh = await lave.createInvoice(input, randomUUID());
+  assert.equal(fresh.invoice.currency, "LAVE");
+  assert.match(fresh.invoice.paymentUri, /^lave:/);
+  const status = await lave.status();
+  assert.equal(status.currency, "LAVE");
+  assert.equal(status.profile, "lave");
+  const request = await lave.paymentRequest(fresh.invoice.id);
+  assert.equal(request.network.currency, "LAVE");
+  assert.equal(request.requestHash, requestDigest(request));
+});

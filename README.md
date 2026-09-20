@@ -1,43 +1,53 @@
 # LAVEPAY
 
-A Dash Core fork with a working local payment workspace: merchant invoices,
-QR checkout, real test transactions, durable payment tracking and explicit refunds.
-Version 0.3 runs invoices on a three-node named devnet, with separate browser
-wallets for customer payment and merchant-approved refunds.
-
-**Current stage: local named-devnet payment prototype.** No live funds, public mainnet,
-fiat conversion or worldwide merchant service are launched by this repository.
-**LAVE** is the selected name of the planned native currency; **LAVEPAY** is the
-payment system. The existing laboratory still transacts in valueless test DASH
-on `atlas-local-v1`; the brand change does not issue LAVE or change consensus.
+A local payment system with merchant invoices, QR checkout, separate customer
+and merchant signing wallets, and independently checked payment/refund receipts.
+Version 0.4 introduces **LAVE Core built from this repository's source** and a
+separate three-node `lave-local-v1` development chain. Its native test unit is
+**LAVE**. These coins have no monetary value; no public mainnet, live payment
+service or fiat conversion is launched.
 
 ```sh
 cd payments
 npm ci
-npm run demo
+npm run core:build
+npm run lab:start
+npm run core:verify
+npm run build
+npm start
 ```
 
-Open **http://127.0.0.1:4173**. Requires Node.js 22.13+; the setup downloads a
-checksum-verified official Dash Core 23.1.8 runtime into an isolated directory.
+Open **http://127.0.0.1:4173**. The applications require Node.js 22.13+; building
+LAVE Core also requires the native toolchain and libraries described in
+[the build guide](docs/LAVE-CORE.md). The build records source and binary
+hashes locally; it is not a claim of independently reproduced release binaries.
+
+The previous Atlas profile is retained explicitly with `LAVEPAY_NETWORK=atlas`.
+It uses its original Dash binary, test DASH, wallets, invoices and chain data.
+Switching profiles does not migrate or rename balances. See the setup guide
+before switching the three applications, which share the same HTTP ports.
 
 - [Setup and payment walkthrough](payments/README.md)
-- [Fork baseline and project scope](LAVEPAY.md)
-- [Delivery roadmap](payments/docs/ROADMAP.md)
+- [Project scope and upstream baseline](LAVEPAY.md)
+- [LAVE Core source changes and build](docs/LAVE-CORE.md)
+- [Network profiles and identity](payments/docs/NETWORK-SPEC.md)
+- [Three-node laboratory](payments/docs/LAB.md)
+- [Wallet approval and recovery](payments/docs/WALLET.md)
 - [Security boundaries](payments/docs/SECURITY.md)
-- [Three-node network lab](payments/docs/LAB.md)
-- [Customer signing prototype](payments/docs/SIGNER.md)
-- [Local architecture and network separation](payments/docs/ARCHITECTURE.md)
+- [LAVE 0.4 validation results](payments/docs/VALIDATION-V04.md)
+- [Delivery roadmap](payments/docs/ROADMAP.md)
 
-Application changes live in `payments/`. Upstream consensus is unchanged;
-the original Dash source and license notices are retained below.
+The local LAVE devnet changes are described separately from inherited Dash
+features. There are no masternode quorums, InstantSend, ChainLocks or independent
+operators in this lab. Upstream source and license notices are retained below.
 
 ---
 
 Dash Core staging tree
 ===========================
 
-| `master` | `develop` |
-| -------- | --------- |
+| `master`                                                                                                                                            | `develop`                                                                                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [![Build Status](https://github.com/dashpay/dash/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/dashpay/dash/tree/master) | [![Build Status](https://github.com/dashpay/dash/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/dashpay/dash/tree/develop) |
 
 https://www.dash.org
@@ -59,7 +69,6 @@ anywhere in the world. Dash uses peer-to-peer technology to operate with
 no central authority: managing transactions and issuing money are carried out
 collectively by the network. Dash Core is the name of the open
 source software which enables the use of this currency.
-
 
 For more information read the original Dash whitepaper.
 

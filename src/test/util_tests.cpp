@@ -1633,7 +1633,7 @@ BOOST_AUTO_TEST_CASE(message_sign)
 
     const std::string message = "Trust no one";
 
-    const std::string expected_signature =
+    const std::string dash_signature =
         "IIOzMDkvw3GtLWXkeEYRRRH53MOLHM44sJ428Nu4NNacTPJTGcKesMJ+3s3OadYK34tpSQIhu922EviNNWTsiQg=";
 
     CKey privkey;
@@ -1653,7 +1653,9 @@ BOOST_AUTO_TEST_CASE(message_sign)
     BOOST_CHECK_MESSAGE(MessageSign(privkey, message, generated_signature),
         "Sign with a valid private key");
 
-    BOOST_CHECK_EQUAL(expected_signature, generated_signature);
+    // The LAVE message domain must not reproduce a Dash signed message.
+    BOOST_CHECK_NE(dash_signature, generated_signature);
+    BOOST_CHECK_EQUAL(MessageVerify("XetGnWHsPXV9VSkWzB6Wn2KhZLD24gqa5j", generated_signature, message), MessageVerificationResult::OK);
 }
 
 BOOST_AUTO_TEST_CASE(message_verify)
@@ -1698,14 +1700,14 @@ BOOST_AUTO_TEST_CASE(message_verify)
             "XetGnWHsPXV9VSkWzB6Wn2KhZLD24gqa5j",
             "IIOzMDkvw3GtLWXkeEYRRRH53MOLHM44sJ428Nu4NNacTPJTGcKesMJ+3s3OadYK34tpSQIhu922EviNNWTsiQg=",
             "Trust no one"),
-        MessageVerificationResult::OK);
+        MessageVerificationResult::ERR_NOT_SIGNED);
 
     BOOST_CHECK_EQUAL(
         MessageVerify(
             "XenV77v8QQ3rwjyCb3j2fCwfvgbkC4Vwaj",
             "IOACalWiJTLJ2U7wTKICx5mQ2tOAJ3to8dko8FMb2XSYbmvL+yMWedyfSfaK6V8jwoociyYx628nkXXnrOhPFIY=",
             "Trust me"),
-        MessageVerificationResult::OK);
+        MessageVerificationResult::ERR_NOT_SIGNED);
 }
 
 BOOST_AUTO_TEST_CASE(message_hash)

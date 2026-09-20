@@ -11,10 +11,13 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
-import { DAEMON_PATH } from "../network/config.mjs";
 import { install } from "../network/install.mjs";
 import { parseAmount } from "../server/money.mjs";
 import {
+  CURRENCY,
+  PROFILE,
+  PROFILE_CONFIG,
+  LAB_DAEMON_PATH,
   DEVNET_GENESIS_HASH,
   EXPECTED_CHAIN,
   GENESIS_HASH,
@@ -31,6 +34,7 @@ import {
   getNode,
 } from "./config.mjs";
 import { assertLabNode, inspectNode, rpc } from "./rpc.mjs";
+import { verifyLaveRuntime } from "./runtime.mjs";
 
 const exec = promisify(execFile);
 const fundingJournalPath = join(LAB_DIR, "funding.json");
@@ -66,7 +70,7 @@ async function prepareNode(nodeId) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
     credential = {
-      username: `atlas_dashboard_${nodeId}`,
+      username: `${PROFILE}_dashboard_${nodeId}`,
       password: randomBytes(32).toString("hex"),
       salt: randomBytes(16).toString("hex"),
     };
@@ -91,7 +95,7 @@ async function prepareNode(nodeId) {
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
       apiCredential = {
-        username: "atlas_merchant_api",
+        username: `${PROFILE}_merchant_api`,
         password: randomBytes(32).toString("hex"),
         salt: randomBytes(16).toString("hex"),
       };
@@ -165,10 +169,11 @@ export async function startNode(nodeId) {
       if (error.message.includes("P2P") || error.code === -8) throw error;
     }
   }
+  if (PROFILE === "lave") await verifyLaveRuntime();
   await prepareNode(nodeId);
   try {
     await exec(
-      DAEMON_PATH,
+      LAB_DAEMON_PATH,
       [`-datadir=${node.datadir}`, `-conf=${node.configPath}`, "-daemonwait=1"],
       { timeout: 60000 },
     );
@@ -281,7 +286,13 @@ async function ensureWallet(nodeId) {
     (wallet) => wallet.name === node.wallet,
   );
   await assertLabNode(nodeId);
-  await rpc(nodeId, found ? "loadwallet" : "createwallet", [node.wallet]);
+  await rpc(
+    nodeId,
+    found ? "loadwallet" : "createwallet",
+    found || !PROFILE_CONFIG.descriptors
+      ? [node.wallet]
+      : [node.wallet, false, false, null, false, true, true],
+  );
 }
 
 export async function mineBlocks(blocks = 1) {
@@ -291,7 +302,7 @@ export async function mineBlocks(blocks = 1) {
   const address = await rpc(
     "miner",
     "getnewaddress",
-    ["atlas-lab-mining"],
+    [`${PROFILE}-lab-mining`],
     "miner",
   );
   await assertLabNode("miner");
@@ -308,8 +319,16 @@ export async function mineBlocks(blocks = 1) {
   return hashes;
 }
 
+export async function ensureLabRuntime() {
+  if (PROFILE === "atlas") {
+    await install();
+    return;
+  }
+  await verifyLaveRuntime();
+}
+
 export async function startLab() {
-  await install();
+  await ensureLabRuntime();
   for (const id of NODE_IDS) await startNode(id);
   await connectLab();
   await waitForSync();
@@ -366,7 +385,7 @@ export async function startLab() {
     const address = await rpc(
       id,
       "getnewaddress",
-      ["atlas-lab-startup-funds"],
+      [`${PROFILE}-lab-startup-funds`],
       id,
     );
     await assertLabNode("miner");
@@ -383,7 +402,7 @@ export async function startLab() {
     operation.txid = await rpc(
       "miner",
       "sendtoaddress",
-      [address, amount, `atlas-lab-bootstrap:${operation.id}`],
+      [address, amount, `${PROFILE}-lab-bootstrap:${operation.id}`],
       "miner",
     );
     operation.state = "complete";
@@ -396,6 +415,9 @@ export async function startLab() {
     `${JSON.stringify(
       {
         name: LAB_NAME,
+        profile: PROFILE,
+        currency: CURRENCY,
+        walletType: PROFILE_CONFIG.descriptors ? "descriptor" : "legacy",
         chain: EXPECTED_CHAIN,
         genesisHash: GENESIS_HASH,
         devnetGenesisHash: DEVNET_GENESIS_HASH,

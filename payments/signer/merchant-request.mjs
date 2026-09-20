@@ -11,7 +11,7 @@ export async function main(args = process.argv.slice(2)) {
     options: {
       amount: { type: "string" },
       description: { type: "string" },
-      merchant: { type: "string", default: "Atlas Studio" },
+      merchant: { type: "string", default: "LAVEPAY Studio" },
       out: { type: "string" },
       minutes: { type: "string", default: "60" },
       help: { type: "boolean", short: "h" },
@@ -20,7 +20,7 @@ export async function main(args = process.argv.slice(2)) {
   });
   if (values.help) {
     console.log(
-      'Usage: node signer/merchant-request.mjs --amount 0.25 --description "Order #1042" --merchant "Atlas Studio" --out request.json [--minutes 60]\nCreates a named-devnet merchant payment request. No customer wallet is accessed.',
+      'Usage: node signer/merchant-request.mjs --amount 0.25 --description "Order #1042" --merchant "LAVEPAY Studio" --out request.json [--minutes 60]\nCreates a named-devnet merchant payment request. No customer wallet is accessed.',
     );
     return;
   }

@@ -1,6 +1,6 @@
 {
   "name": "lavepay-lab",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "LAVEPAY local devnet payments with separate customer and merchant signing wallets",
@@ -31,9 +31,13 @@
     "test:legacy": "node tests/integration.mjs",
     "test:lab": "node tests/lab-integration.mjs",
     "test:signer": "node tests/signer-integration.mjs",
-    "format": "prettier --write start.mjs \"{server,network,lab,signer,merchant,wallet,tests}/**/*.mjs\" \"web/src/**/*.{jsx,css}\" web/vite.config.js",
-    "check:format": "prettier --check start.mjs \"{server,network,lab,signer,merchant,wallet,tests}/**/*.mjs\" \"web/src/**/*.{jsx,css}\" web/vite.config.js",
-    "demo": "npm run lab:start && npm run build && npm start"
+    "format": "prettier --write start.mjs \"{core,server,network,lab,signer,merchant,wallet,tests}/**/*.mjs\" \"web/src/**/*.{js,jsx,css}\" web/vite.config.js",
+    "check:format": "prettier --check start.mjs \"{core,server,network,lab,signer,merchant,wallet,tests}/**/*.mjs\" \"web/src/**/*.{js,jsx,css}\" web/vite.config.js",
+    "demo": "npm run lab:start && npm run build && npm start",
+    "core:build": "node core/build.mjs",
+    "core:verify": "node core/verify.mjs",
+    "core:test": "node core/test.mjs",
+    "test:wallet-isolation": "node tests/wallet-isolation.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

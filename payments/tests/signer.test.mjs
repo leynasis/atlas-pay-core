@@ -545,3 +545,35 @@ test("CLI rejects noninteractive approval and has no --yes escape hatch", () => 
   assert.equal(bypass.status, 1);
   assert.match(bypass.stderr, /Usage/);
 });
+
+test("A stored Atlas signing draft cannot be reviewed, approved or cancelled under a LAVE identity", async (t) => {
+  const { signer, request, lab, store } = await setup(t);
+  const review = await signer.prepare(request);
+  assert.equal(review.currency, "DASH");
+  const lave = new CustomerSigner({
+    rpc: lab.rpc,
+    store,
+    identity: {
+      chain: "devnet-lave-local-v1",
+      devnetName: "lave-local-v1",
+      genesisHash: "2".repeat(64),
+      devnetGenesisHash: "3".repeat(64),
+      currency: "LAVE",
+    },
+  });
+  lab.calls.length = 0;
+  let approvalCalled = false;
+  await assert.rejects(lave.status(request.id), code("WRONG_NETWORK"));
+  await assert.rejects(lave.cancel(request.id), code("WRONG_NETWORK"));
+  await assert.rejects(
+    lave.approve(request.id, () => {
+      approvalCalled = true;
+      return true;
+    }),
+    code("WRONG_NETWORK"),
+  );
+  assert.equal(approvalCalled, false);
+  assert.equal(lab.calls.length, 0);
+  assert.equal(store.get(request.id).state, "prepared");
+  assert.deepEqual(store.get(request.id).request, request);
+});

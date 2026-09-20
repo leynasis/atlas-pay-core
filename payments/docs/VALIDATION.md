@@ -1,4 +1,6 @@
-# Prototype validation — v0.3
+# Historical prototype validation — v0.3
+
+These recorded results cover the Atlas/DASH profile before the separate LAVE Core profile was introduced. They are not validation results for the new native client.
 
 Validated on 20 September 2026 (Asia/Baku), macOS ARM64, Node.js 25.6.1, with the checksum-verified official Dash Core 23.1.8 runtime. All transfers used local chains and valueless test coins.
 

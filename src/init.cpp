@@ -183,7 +183,7 @@ static const char* DEFAULT_ASMAP_FILENAME="ip_asn.map";
 /**
  * The PID file facilities.
  */
-static const char* BITCOIN_PID_FILENAME = "dashd.pid";
+static const char* BITCOIN_PID_FILENAME = "laved.pid";
 
 static fs::path GetPidFile(const ArgsManager& args)
 {
@@ -1709,7 +1709,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     int minsporkkeys = args.GetIntArg("-minsporkkeys", Params().MinSporkKeys());
-    if (!node.sporkman->SetMinSporkKeys(minsporkkeys)) {
+    if (!vSporkAddresses.empty() && !node.sporkman->SetMinSporkKeys(minsporkkeys)) {
         return InitError(_("Invalid minimum number of spork signers specified with -minsporkkeys"));
     }
 

@@ -1,6 +1,8 @@
 import { access } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import {
+  CURRENCY,
+  PROFILE,
   DEVNET_GENESIS_HASH,
   GENESIS_HASH,
   LAB_NAME,
@@ -72,6 +74,8 @@ export async function getLabStatus() {
     );
   return {
     name: LAB_NAME,
+    profile: PROFILE,
+    currency: CURRENCY,
     mode: "devnet",
     localOnly: true,
     configured,

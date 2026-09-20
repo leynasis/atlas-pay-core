@@ -1,10 +1,5 @@
 import { setTimeout as delay } from "node:timers/promises";
-import {
-  LAB_NAME,
-  EXPECTED_CHAIN,
-  GENESIS_HASH,
-  DEVNET_GENESIS_HASH,
-} from "../lab/config.mjs";
+import { NETWORK_IDENTITY } from "../lab/config.mjs";
 import {
   merchantReadRpc,
   inspectNode,
@@ -14,12 +9,7 @@ import {
 import { getLabStatus } from "../lab/status.mjs";
 import { AppError } from "../server/errors.mjs";
 
-export const MERCHANT_IDENTITY = Object.freeze({
-  chain: EXPECTED_CHAIN,
-  devnetName: LAB_NAME,
-  genesisHash: GENESIS_HASH,
-  devnetGenesisHash: DEVNET_GENESIS_HASH,
-});
+export const MERCHANT_IDENTITY = NETWORK_IDENTITY;
 
 export function merchantContext() {
   return {
@@ -80,7 +70,7 @@ export async function mineDevelopment({ blocks, pendingTxids = [] }) {
   await assertLabNode("miner");
   const address = await minerRpc(
     "getnewaddress",
-    ["atlas-devnet-ui-mining"],
+    ["lavepay-devnet-ui-mining"],
     "miner",
   );
   await minerRpc("generatetoaddress", [blocks, address]);

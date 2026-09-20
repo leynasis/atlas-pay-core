@@ -1,1 +1,2 @@
 src/clientversion.cpp export-subst
+src/dashbls/Makefile.relic.include whitespace=cr-at-eol

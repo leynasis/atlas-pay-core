@@ -46,7 +46,9 @@ BOOST_AUTO_TEST_CASE(get_next_work)
     BOOST_CHECK_EQUAL(GetNextWorkRequired(blockIndexLast, &blockHeader, chainParams->GetConsensus()), 0x1b1441deU); // Block #123457 has 0x1b1441de
 
     // test special rules for slow blocks on devnet/testnet
-    const auto chainParamsDev = CreateChainParams(*m_node.args, CBaseChainParams::DEVNET);
+    ArgsManager lave_args;
+    lave_args.ForceSetArg("-devnet", "lave-local-v1");
+    const auto chainParamsDev = CreateChainParams(lave_args, CBaseChainParams::DEVNET);
 
     // make sure normal rules apply
     blockHeader.nTime = 1408732505; // Block #123457
@@ -227,9 +229,9 @@ BOOST_AUTO_TEST_CASE(ChainParams_TESTNET_sanity)
 
 BOOST_AUTO_TEST_CASE(ChainParams_DEVNET_sanity)
 {
-    gArgs.SoftSetBoolArg("-devnet", true);
-    sanity_check_chainparams(*m_node.args, CBaseChainParams::DEVNET);
-    gArgs.ForceRemoveArg("devnet");
+    ArgsManager lave_args;
+    lave_args.ForceSetArg("-devnet", "lave-local-v1");
+    sanity_check_chainparams(lave_args, CBaseChainParams::DEVNET);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

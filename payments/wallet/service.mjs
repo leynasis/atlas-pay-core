@@ -140,7 +140,7 @@ export class WalletService {
         const address = await this.signer.rpc(
           this.role,
           "getnewaddress",
-          ["atlas-wallet-receive"],
+          ["lavepay-wallet-receive"],
           this.role,
         );
         this.store.db
@@ -157,12 +157,29 @@ export class WalletService {
         this.addressPromise = null;
         throw error;
       });
+    const receiveAddress = await this.addressPromise;
+    // A copied journal or a replaced node wallet must never advertise an old
+    // address as a receiving address for the currently verified network.
+    const addressInfo = await this.signer.rpc(
+      this.role,
+      "getaddressinfo",
+      [receiveAddress],
+      this.role,
+    );
+    requirePolicy(
+      addressInfo.ismine === true && !addressInfo.iswatchonly,
+      "RECEIVE_ADDRESS_MISMATCH",
+      "The saved receiving address does not belong to this network's signing wallet.",
+    );
     return {
       role: this.role,
       network: this.signer.identity,
+      currency: this.signer.identity.currency || "DASH",
+      profile: this.signer.identity.currency === "LAVE" ? "lave" : "atlas",
+      devnetName: this.signer.identity.devnetName,
       balance: formatAmount(confirmed),
       pendingBalance: formatAmount(pending),
-      receiveAddress: await this.addressPromise,
+      receiveAddress,
       chainAvailable: true,
       blockHeight: chain.blocks,
     };

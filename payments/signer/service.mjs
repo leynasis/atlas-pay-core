@@ -75,6 +75,7 @@ export class CustomerSigner {
       description: record.request.description,
       address: record.request.address,
       network: record.request.network,
+      currency: record.request.network.currency || "DASH",
       expiresAt: record.request.expiresAt,
       amount: record.amount,
       fee: record.fee,
@@ -91,6 +92,11 @@ export class CustomerSigner {
       record,
       "NOT_FOUND",
       "No signing draft exists for this request.",
+    );
+    requirePolicy(
+      canonical(record.request.network) === canonical(this.identity),
+      "WRONG_NETWORK",
+      "Stored signing draft belongs to a different blockchain. Select its original network profile.",
     );
     return record;
   }
@@ -462,7 +468,7 @@ export async function createPaymentRequest({
   const address = await rpc(
     "merchant",
     "getnewaddress",
-    [`atlas-request:${id}`],
+    [`lavepay-request:${id}`],
     "merchant",
   );
   const request = {

@@ -14,17 +14,19 @@ Completion criteria: reproduce invoice → payment → confirmation → refund w
 
 ## Milestone 2 — Independent network specification
 
-Implemented toward this milestone: the pinned `atlas-local-v1` named-devnet
-specification, three loopback nodes with distinct wallets and verified chain
-identity, a live read-only monitor, and reproducible launch commands. This uses
-Dash's existing devnet mechanism and official binary. A separately compiled
-public-chain client and final mainnet parameter set are still future work.
+Implemented toward this milestone: v0.4 adds source-built LAVE Core, a separate
+`lave-local-v1` development genesis, P2P bytes and local address/key encodings,
+three loopback nodes, profile-specific wallet/merchant state, and explicit LAVE
+currency binding. The existing Dash-backed Atlas profile remains selectable
+without changing its DASH balances or checksums. This is a local native-client
+milestone, not a public-chain launch or finalized mainnet parameter set.
 
-The selected payment-system name is **LAVEPAY** and the planned native currency is **LAVE**. Domain, ticker-market and trademark availability have not been verified. The current test-DASH runtime and `atlas-local-v1` identity are unchanged.
+**LAVEPAY** is the payment system; **LAVE** is the new profile's valueless test
+unit. Name, domain and trademark availability have not been verified.
 
 Decide intended payment market, threat model, sustainable operator budget and initial distribution. Specify network identifiers, genesis, seed bootstrap, address formats, replay isolation, difficulty rules, quorum formation and activation heights. Review all changes together: block-based schedules affect issuance and quorum timing.
 
-Build the fork from source and validate independent nodes against identical genesis/configuration. Publish a reproducible build recipe and the exact upstream diff. Test wallet/network separation and recovery. Recruit independent operators before claiming decentralization.
+Maintain the source build recipe, exact upstream diff and recorded build provenance. Independently reproduce binaries and validate nodes against identical genesis/configuration. Test wallet/network separation and recovery. Recruit independent operators before claiming decentralization.
 
 ## Milestone 3 — Non-custodial payment integration
 

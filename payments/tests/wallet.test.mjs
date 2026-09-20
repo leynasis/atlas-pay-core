@@ -299,6 +299,8 @@ test("wallet balance keeps unconfirmed own change visible and moves it to confir
         assert.deepEqual(params, ["*", 1, false, false]);
         return confirmed;
       }
+      if (method === "getaddressinfo")
+        return { ismine: true, iswatchonly: false };
       assert.equal(method, "getbalances");
       return { mine: { trusted, untrusted_pending: external, immature: "50" } };
     };
@@ -316,4 +318,71 @@ test("wallet balance keeps unconfirmed own change visible and moves it to confir
   } finally {
     f.store.close();
   }
+});
+
+test("An offline LAVE wallet preserves explicit currency and uses a separate session cookie", async (t) => {
+  const f = fixture();
+  t.after(() => f.store.close());
+  f.signer.identity = {
+    ...identity,
+    chain: "devnet-lave-local-v1",
+    devnetName: "lave-local-v1",
+    currency: "LAVE",
+  };
+  f.service.status = async () => {
+    throw new Error("Node is offline");
+  };
+  const server = createWalletServer({ service: f.service, role: "customer" });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+  const response = await fetch(
+    `http://127.0.0.1:${server.address().port}/api/wallet/status`,
+  );
+  const status = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(status.currency, "LAVE");
+  assert.equal(status.profile, "lave");
+  assert.equal(status.devnetName, "lave-local-v1");
+  assert.equal(status.chainAvailable, false);
+  assert.equal(status.balance, null);
+  assert.match(
+    response.headers.get("set-cookie"),
+    /^lave_customer_wallet_session=/,
+  );
+});
+
+test("A copied journal or replaced wallet cannot advertise an unowned receiving address", async (t) => {
+  const f = fixture();
+  t.after(() => f.store.close());
+  const oldAddress = "y" + "a".repeat(33);
+  f.store.db
+    .prepare(
+      "INSERT INTO wallet_settings(key,value) VALUES('receiveAddress',?)",
+    )
+    .run(oldAddress);
+  f.signer.identity = {
+    ...identity,
+    chain: "devnet-lave-local-v1",
+    currency: "LAVE",
+  };
+  f.signer.checkNetwork = async () => ({ blocks: 130 });
+  let owned = false;
+  f.signer.rpc = async (_role, method, params) => {
+    if (method === "getbalance") return "1";
+    if (method === "getbalances")
+      return { mine: { trusted: "1", untrusted_pending: "0" } };
+    assert.equal(method, "getaddressinfo");
+    assert.deepEqual(params, [oldAddress]);
+    return { ismine: owned, iswatchonly: false };
+  };
+  await assert.rejects(f.service.status(), {
+    code: "RECEIVE_ADDRESS_MISMATCH",
+  });
+  owned = true;
+  assert.equal((await f.service.status()).receiveAddress, oldAddress);
+  owned = false;
+  await assert.rejects(f.service.status(), {
+    code: "RECEIVE_ADDRESS_MISMATCH",
+  });
 });

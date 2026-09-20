@@ -16,7 +16,7 @@
  * for both dashd and dash-qt, to make it harder for attackers to
  * target servers or GUI users specifically.
  */
-const std::string CLIENT_NAME("Dash Core");
+const std::string CLIENT_NAME("LAVE Core");
 
 
 #ifdef HAVE_BUILD_INFO
@@ -96,7 +96,7 @@ std::string CopyrightHolders(const std::string& strPrefix, unsigned int nStartYe
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "<https://github.com/dashpay/dash>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/leynasis/atlas-pay-core>";
 
     return CopyrightHolders(_("Copyright (C)").translated, 2014, COPYRIGHT_YEAR) + "\n" +
            "\n" +

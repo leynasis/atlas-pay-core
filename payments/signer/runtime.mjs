@@ -1,4 +1,5 @@
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { SIGNER_DIR } from "../lab/config.mjs";
 import { CustomerSigner } from "./service.mjs";
 import { SignerStore } from "./store.mjs";
 import { requirePolicy } from "./policy.mjs";
@@ -6,12 +7,7 @@ import { requirePolicy } from "./policy.mjs";
 export async function labContext(role) {
   const config = await import("../lab/config.mjs");
   const lab = await import("../lab/rpc.mjs");
-  const identity = {
-    chain: config.EXPECTED_CHAIN,
-    devnetName: config.LAB_NAME,
-    genesisHash: config.GENESIS_HASH,
-    devnetGenesisHash: config.DEVNET_GENESIS_HASH,
-  };
+  const identity = config.NETWORK_IDENTITY;
   const rpc = (node, method, params = [], wallet) => {
     requirePolicy(
       node === role && (!wallet || wallet === role),
@@ -38,11 +34,7 @@ export async function openRoleSigner(role = "customer") {
     "Unsupported signer role.",
   );
   const context = await labContext(role);
-  const store = new SignerStore(
-    fileURLToPath(
-      new URL(`../.runtime/signer/${role}.sqlite`, import.meta.url),
-    ),
-  );
+  const store = new SignerStore(join(SIGNER_DIR, `${role}.sqlite`));
   return { signer: new CustomerSigner({ ...context, store, role }), store };
 }
 

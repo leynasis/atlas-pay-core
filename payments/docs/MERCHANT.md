@@ -1,6 +1,6 @@
 # Named-devnet merchant API
 
-The v0.3 merchant service listens on `127.0.0.1:4173` and serves `web/dist`, including `/pay/<invoice-id>`. It keeps a separate SQLite ledger in `.runtime/merchant/invoices.sqlite`. The original regtest service and its payer are a legacy demonstration with a separate database; their invoices are not imported into this named-devnet ledger.
+The v0.4 merchant service listens on `127.0.0.1:4173` and serves `web/dist`, including `/pay/<invoice-id>`. It keeps a separate SQLite ledger in `.runtime/lave/merchant/invoices.sqlite` (default LAVE), or the preserved `.runtime/merchant/invoices.sqlite` under `LAVEPAY_NETWORK=atlas`. The original regtest service and its payer are a legacy demonstration with a separate database; their invoices are not imported into this named-devnet ledger.
 
 The merchant service can create receiving addresses and inspect its wallet through a dedicated RPC credential. The daemon restricts that credential to an explicit list of address and read methods. It cannot sign, send, export keys, or access the customer wallet. Customer payment signing happens in the separate wallet service on port 4174; merchant refund signing happens in the separate wallet service on port 4175. No direct `/pay` or `/refund` spending endpoint exists on the merchant API.
 
@@ -26,7 +26,7 @@ All mutating requests require a JSON object with `Content-Type: application/json
 
 Errors have the shape `{ error: { code, message } }`. The service reports unavailable or mismatched pinned chains without exposing RPC credentials or internal paths.
 
-`GET /api/status` returns `network: "devnet-atlas-local-v1"`, `mode: "devnet"`, `connected`, nullable `blockHeight`, `currency: "DASH"`, `balances: { merchant: "…" }`, and wallet URLs. `capabilities` contains `instantSend: false`, `chainLocks: false` and `serverCanSign: false`; these are application capabilities, not assertions about isolation from another process running as the same operating-system user.
+`GET /api/status` returns the selected `profile`, `devnetName`, exact `network` chain name, `mode: "devnet"`, `connected`, nullable `blockHeight`, `currency: "LAVE"` or `"DASH"`, `balances: { merchant: "…" }`, and wallet URLs. `capabilities` contains `instantSend: false`, `chainLocks: false` and `serverCanSign: false`; these are application capabilities, not assertions about isolation from another process running as the same operating-system user.
 
 ## Invoice and signer requests
 
@@ -35,7 +35,8 @@ An invoice preserves the original fields `id`, `amount`, `amountSats`, `merchant
 The additional fields are:
 
 - `checkoutUrl`: local application checkout link; QR codes encode this URL.
-- `paymentUri`: the raw `dash:` payment URI, kept separate from the application checkout. A raw URI alone does not identify this named devnet and must not be presented as an interchangeable normal-wallet link.
+- `currency`: original request/profile unit, LAVE or DASH; old Atlas amounts are not relabeled.
+- `paymentUri`: the experimental `lave:` URI for LAVE or existing `dash:` URI for Atlas, kept separate from the application checkout. A raw URI alone does not identify this named devnet and must not be presented as an interchangeable normal-wallet link.
 - `paymentRequestAvailable`: whether a customer wallet may currently import the invoice request.
 - `canRequestRefund`: whether all received funds are confirmed and no refund request exists.
 - `refundRequestId`, `refundAddress`, `requestedRefundAmount`: the immutable request awaiting merchant approval.
@@ -43,7 +44,7 @@ The additional fields are:
 - `refundAmount`: the amount of a verified registered refund transaction; it remains zero while only a request exists.
 - `additionalReceivedAfterRefund`, `requiresReview`, `reviewReason`: reconciliation exceptions that the UI must display prominently.
 
-Payment requests contain `{ version: 1, id, merchantName, description, address, amount, amountSats, createdAt, expiresAt, network, requestHash }`. The payment request ID equals the invoice ID. The `network` object pins the named chain, devnet name and both genesis hashes. The hash is a checksum and binding for a prepared transaction, not merchant identity authentication.
+Payment requests contain `{ version: 1, id, merchantName, description, address, amount, amountSats, createdAt, expiresAt, network, requestHash }`. The payment request ID equals the invoice ID. The `network` object pins the named chain, devnet name and both genesis hashes. New LAVE requests also pin `currency: "LAVE"`; old Atlas request objects remain checksum-compatible without adding that field. The hash is a checksum and binding for a prepared transaction, not merchant identity authentication.
 
 The full original payment request never changes amount under the same ID. If a partial payment arrives, importing or approving another full payment is blocked for review. The received funds remain visible and can be fully refunded after confirmation. Late external payments are still reconciled, and overpayment is shown explicitly.
 
@@ -55,7 +56,7 @@ This version supports one immutable, full refund request per invoice. It does no
 
 Creating a request does not move money and does not mark an invoice refunded. Its unique request ID is separate from the invoice ID. The merchant wallet on port 4175 imports and reviews that request, signs a PSBT only after merchant approval, broadcasts, then reports the resulting transaction ID with a stable receipt idempotency key.
 
-The API verifies that the merchant wallet knows a distinct outgoing transaction, with the exact requested destination and amount, a merchant-paid fee and only merchant-owned change outputs. It rejects an incoming payment reused as a refund, a transaction predating the request, a transaction already allocated to another invoice, conflicts, abandoned transactions and zero-confirmation transactions absent from the mempool. The transaction must be ordinary Dash payment data. A receipt retries safely; a conflicting transaction ID cannot replace a registered refund.
+The API verifies that the merchant wallet knows a distinct outgoing transaction, with the exact requested destination and amount, a merchant-paid fee and only merchant-owned change outputs. It rejects an incoming payment reused as a refund, a transaction predating the request, a transaction already allocated to another invoice, conflicts, abandoned transactions and zero-confirmation transactions absent from the mempool. The transaction must be an ordinary payment in the selected Core network. A receipt retries safely; a conflicting transaction ID cannot replace a registered refund.
 
 One block confirmation makes the registered refund `refunded`; a reorganization can return it to `refund_pending`. Conflicts, missing transactions and unconfirmed refunds absent from the mempool require review. The original transaction ID remains fixed; normal status returns only when that same transaction reappears or confirms. New incoming funds after a refund request invalidate further request imports; funds arriving after broadcast are explicitly flagged and do not trigger a second refund. Expired or ambiguous requests require wallet/ledger inspection; this version has no automatic replacement or refund-request reset.
 

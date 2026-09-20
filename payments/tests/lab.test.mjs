@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  PROFILE_CONFIG,
+  LAB_DIR,
   DEVNET_GENESIS_HASH,
   EXPECTED_CHAIN,
   GENESIS_HASH,
@@ -36,7 +38,7 @@ test("lab identity requires named chain and both pinned genesis blocks", () => {
 
 test("peer guard checks loopback, exact outbound port and named devnet", () => {
   const peer = {
-    addr: "127.0.0.1:19912",
+    addr: `127.0.0.1:${NODES.merchant.p2pPort}`,
     inbound: false,
     subver: `/Dash Core:23.1.8(devnet.${EXPECTED_CHAIN})/`,
   };
@@ -87,7 +89,11 @@ test("node guard fails closed for wrong genesis and missing network flag", async
 });
 
 test("unfinished local handshakes fail closed without masking invalid peers", () => {
-  const pending = { addr: "127.0.0.1:19912", inbound: false, subver: "" };
+  const pending = {
+    addr: `127.0.0.1:${NODES.merchant.p2pPort}`,
+    inbound: false,
+    subver: "",
+  };
   assert.throws(() => verifyPeers("miner", [pending]), {
     code: "LAB_PEER_HANDSHAKE_PENDING",
   });
@@ -193,7 +199,7 @@ test("dashboard transport rejects monetary methods before loading credentials", 
 test("node destinations and cookies are fixed and separate from legacy regtest", () => {
   assert.deepEqual(
     Object.values(NODES).map((node) => node.rpcPort),
-    [19901, 19902, 19903],
+    [0, 1, 2].map((offset) => PROFILE_CONFIG.rpcBase + offset),
   );
   assert.equal(
     new Set(Object.values(NODES).map((node) => node.cookiePath)).size,
@@ -202,9 +208,9 @@ test("node destinations and cookies are fixed and separate from legacy regtest",
   assert.throws(() => getNode("main"), /Unknown lab node/);
   assert.throws(() => getNode("__proto__"), /Unknown lab node/);
   for (const node of Object.values(NODES)) {
-    assert.match(
+    assert.equal(
       node.cookiePath,
-      /lab\/[^/]+\/devnet-atlas-local-v1\/\.cookie$/,
+      `${LAB_DIR}/${node.id}/${EXPECTED_CHAIN}/.cookie`,
     );
     assert.notEqual(node.cookiePath, node.dashboardCredentialsPath);
   }

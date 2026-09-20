@@ -52,6 +52,9 @@ std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const std::string& chain
  */
 void SetupChainParamsBaseOptions(ArgsManager& argsman);
 
+/** Fail closed unless explicitly configured for the single supported local LAVE chain. */
+void RequireLaveLocalChain(const ArgsManager& args);
+
 /**
  * Return the currently selected parameters. This won't change after app
  * startup, except for unit tests.

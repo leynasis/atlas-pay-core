@@ -1,3 +1,4 @@
+import { currencyFor, profileFor, walletStorageKey } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Brand from "./Brand.jsx";
 import {
@@ -31,7 +32,7 @@ const dictionary = {
     pendingBalance: "Pending balance",
     receive: "Your receiving address",
     receiveHelp:
-      "Use this address to receive test DASH or a refund on the LAVEPAY devnet.",
+      "Use this address to receive test {currency} or a refund on this local network.",
     connected: "Wallet node connected",
     offline: "Wallet node unavailable",
     checking: "Connecting to wallet",
@@ -142,7 +143,7 @@ const dictionary = {
     pendingBalance: "Ожидающий баланс",
     receive: "Ваш адрес для получения",
     receiveHelp:
-      "Используйте этот адрес для получения тестовых DASH или возврата в devnet LAVEPAY.",
+      "Используйте этот адрес для получения тестовых {currency} или возврата в этой локальной сети.",
     connected: "Узел кошелька подключён",
     offline: "Узел кошелька недоступен",
     checking: "Подключение к кошельку",
@@ -242,23 +243,15 @@ const dictionary = {
     invalidInvoice: "Введите ID счёта.",
   },
 };
-const storageKey = "atlas-wallet-active-v1";
+const legacyStorageKey = "atlas-wallet-active-v1";
 function initialContext() {
   const fragment = new URLSearchParams(location.hash.slice(1));
   const role = location.port === "4175" ? "merchant" : "customer";
-  const invoiceId = fragment.get("invoice") || "";
-  let saved = null;
-  try {
-    saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-  } catch {}
   return {
     role,
-    invoiceId: invoiceId || saved?.invoiceId || "",
+    invoiceId: fragment.get("invoice") || "",
     kind: fragment.get("kind") || (role === "merchant" ? "refund" : "payment"),
-    requestId:
-      saved?.requestId && (!invoiceId || saved.invoiceId === invoiceId)
-        ? saved.requestId
-        : null,
+    requestId: null,
   };
 }
 function WalletCopy({ label, value, t }) {
@@ -317,6 +310,7 @@ export default function WalletApp() {
   const csrf = useRef(null),
     mutation = useRef(false),
     polling = useRef(false),
+    storageScope = useRef(null),
     activeId = useRef(requestId);
   activeId.current = requestId;
   const role = status?.role || context.role;
@@ -356,13 +350,44 @@ export default function WalletApp() {
     polling.current = true;
     try {
       const result = await get("/status");
+      const scope = walletStorageKey(result);
+      if (!scope) throw new Error(t.statusError);
+      if (storageScope.current !== scope) {
+        storageScope.current = scope;
+        activeId.current = null;
+        setRequestId(null);
+        setReview(null);
+        setInvoiceId(context.invoiceId);
+        setRestored(false);
+        let saved;
+        try {
+          saved = JSON.parse(localStorage.getItem(scope) || "null");
+          // Only the explicitly identified old Atlas profile may import its
+          // pre-profile browser bookmark; LAVE must never restore an Atlas ID.
+          if (!saved && profileFor(result) === "atlas") {
+            saved = JSON.parse(
+              localStorage.getItem(legacyStorageKey) || "null",
+            );
+            if (saved) localStorage.setItem(scope, JSON.stringify(saved));
+          }
+        } catch {}
+        if (
+          saved?.requestId &&
+          (!context.invoiceId || saved.invoiceId === context.invoiceId)
+        ) {
+          activeId.current = saved.requestId;
+          setRequestId(saved.requestId);
+          setInvoiceId(saved.invoiceId);
+          setRestored(true);
+        }
+      }
       setStatus(result);
       csrf.current = result.csrfToken;
       if (activeId.current) {
-        const data = await get(
-          "/requests/" + encodeURIComponent(activeId.current),
-        );
-        setReview(data.review);
+        const requestedId = activeId.current;
+        const data = await get("/requests/" + encodeURIComponent(requestedId));
+        if (activeId.current === requestedId && storageScope.current === scope)
+          setReview(data.review);
       }
       setFetchError("");
     } catch (err) {
@@ -400,7 +425,7 @@ export default function WalletApp() {
         activeId.current = id;
         setRequestId(id);
         localStorage.setItem(
-          storageKey,
+          storageScope.current,
           JSON.stringify({ requestId: id, invoiceId: invoiceId.trim(), kind }),
         );
         setRestored(false);
@@ -432,6 +457,8 @@ export default function WalletApp() {
   }
   const connected = status?.chainAvailable === true && !fetchError;
   const network = review?.network || status?.network;
+  const currency = currencyFor(review, status);
+  const balanceCurrency = currencyFor(status);
   const networkName = network?.devnetName || network?.chain || "—";
   const expired =
     review?.expiresAt && Date.parse(review.expiresAt) <= Date.now();
@@ -637,19 +664,19 @@ export default function WalletApp() {
                   <div>
                     <span>{t.amount}</span>
                     <strong>
-                      {review.amount ?? "—"} <small>DASH</small>
+                      {review.amount ?? "—"} <small>{currency}</small>
                     </strong>
                   </div>
                   <div>
                     <span>{t.fee}</span>
                     <strong>
-                      {review.fee ?? "—"} <small>DASH</small>
+                      {review.fee ?? "—"} <small>{currency}</small>
                     </strong>
                   </div>
                   <div className="wallet-total">
                     <span>{t.total}</span>
                     <strong>
-                      {review.total ?? "—"} <small>DASH</small>
+                      {review.total ?? "—"} <small>{currency}</small>
                     </strong>
                   </div>
                 </div>
@@ -658,7 +685,9 @@ export default function WalletApp() {
                     {t.change}
                     <small>{t.changeNote}</small>
                   </span>
-                  <strong>{review.changeAmount ?? "—"} DASH</strong>
+                  <strong>
+                    {review.changeAmount ?? "—"} {currency}
+                  </strong>
                 </div>
                 {review.changeAddress && (
                   <WalletCopy
@@ -851,19 +880,23 @@ export default function WalletApp() {
             <div className="wallet-balance">
               <span>{t.balance}</span>
               <strong>
-                {status?.balance ?? "—"} <small>DASH</small>
+                {status?.balance ?? "—"} <small>{balanceCurrency}</small>
               </strong>
             </div>
             <div className="wallet-pending-balance">
               <span>{t.pendingBalance}</span>
-              <strong>{status?.pendingBalance ?? "—"} DASH</strong>
+              <strong>
+                {status?.pendingBalance ?? "—"} {balanceCurrency}
+              </strong>
             </div>
             <WalletCopy
               label={t.receive}
               value={status?.receiveAddress}
               t={t}
             />
-            <p className="wallet-receive-help">{t.receiveHelp}</p>
+            <p className="wallet-receive-help">
+              {t.receiveHelp.replace("{currency}", balanceCurrency)}
+            </p>
             <div className="wallet-boundary">
               <ShieldCheck size={17} />
               <p>{t.signerHelp}</p>

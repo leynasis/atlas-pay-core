@@ -104,7 +104,7 @@ export function createWalletServer({
     "Unknown wallet role.",
   );
   const sessions = new Map();
-  const cookieName = `atlas_${role}_wallet_session`;
+  const cookieName = `${service.signer.identity.currency === "LAVE" ? "lave" : "atlas"}_${role}_wallet_session`;
   function session(req, res, create = false) {
     const token = (req.headers.cookie || "")
       .split(";")
@@ -189,6 +189,10 @@ export function createWalletServer({
           return json(res, 200, {
             role,
             network: service.signer.identity,
+            currency: service.signer.identity.currency || "DASH",
+            profile:
+              service.signer.identity.currency === "LAVE" ? "lave" : "atlas",
+            devnetName: service.signer.identity.devnetName,
             balance: null,
             pendingBalance: null,
             receiveAddress: null,

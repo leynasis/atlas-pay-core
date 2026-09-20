@@ -1,3 +1,4 @@
+import { currencyFor, profileFor } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Blocks,
@@ -344,6 +345,25 @@ export default function NetworkLab({ locale }) {
     (node) => node.online && node.identityVerified,
   ).length;
   const observation = data?.observedAt ? new Date(data.observedAt) : null;
+  const profile = profileFor(data);
+  const runtime =
+    profile === "lave"
+      ? "LAVE Core"
+      : profile === "atlas"
+        ? "Dash Core 23.1.8"
+        : "—";
+  const runtimeDescription =
+    profile === "lave"
+      ? locale === "ru"
+        ? "Собран из исходников · отдельная локальная цепочка LAVE"
+        : "Built from source · separate local LAVE chain"
+      : profile === "atlas"
+        ? locale === "ru"
+          ? "Официальный Dash Core · прежний профиль Atlas и тестовые DASH"
+          : "Official Dash Core · existing Atlas profile and test DASH"
+        : locale === "ru"
+          ? "Параметры среды ещё не получены"
+          : "Runtime metadata is not available yet";
   return (
     <div className="network-lab">
       <section className="page-heading lab-page-heading">
@@ -373,6 +393,7 @@ export default function NetworkLab({ locale }) {
         <div>
           <strong>{t.local}</strong>
           <p>{t.localBody}</p>
+          <p>{runtimeDescription}</p>
         </div>
         <span className="lab-mode">{data?.mode || "—"}</span>
       </div>
@@ -480,6 +501,20 @@ export default function NetworkLab({ locale }) {
                   <div>
                     <dt>{t.chainName}</dt>
                     <dd>{data.name || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>
+                      {locale === "ru"
+                        ? "Валюта / профиль"
+                        : "Currency / profile"}
+                    </dt>
+                    <dd>
+                      {currencyFor(data)} · {data.profile || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{locale === "ru" ? "Клиент" : "Client"}</dt>
+                    <dd>{runtime}</dd>
                   </div>
                   <div>
                     <dt>{t.chainMode}</dt>

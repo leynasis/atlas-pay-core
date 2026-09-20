@@ -32,7 +32,7 @@ async function request(
     },
     body: JSON.stringify({
       jsonrpc: "1.0",
-      id: "atlas-local-lab",
+      id: "lavepay-local-lab",
       method,
       params,
     }),

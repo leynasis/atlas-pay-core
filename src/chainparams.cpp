@@ -82,30 +82,6 @@ static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits
     return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
 
-static CBlock FindDevNetGenesisBlock(const CBlock &prevBlock, const CAmount& reward)
-{
-    std::string devNetName = gArgs.GetDevNetName();
-    assert(!devNetName.empty());
-
-    CBlock block = CreateDevNetGenesisBlock(prevBlock.GetHash(), devNetName, prevBlock.nTime + 1, 0, prevBlock.nBits, reward);
-
-    arith_uint256 bnTarget;
-    bnTarget.SetCompact(block.nBits);
-
-    for (uint32_t nNonce = 0; nNonce < UINT32_MAX; nNonce++) {
-        block.nNonce = nNonce;
-
-        uint256 hash = block.GetHash();
-        if (UintToArith256(hash) <= bnTarget)
-            return block;
-    }
-
-    // This is very unlikely to happen as we start the devnet with a very low difficulty. In many cases even the first
-    // iteration of the above loop will give a result already
-    error("FindDevNetGenesisBlock: could not find devnet genesis block for %s", devNetName);
-    assert(false);
-}
-
 bool CChainParams::IsValidMNActivation(int nBit, int64_t timePast) const
 {
     assert(nBit < VERSIONBITS_NUM_BITS);
@@ -529,7 +505,9 @@ public:
  */
 class CDevNetParams : public CChainParams {
 public:
-    explicit CDevNetParams(const ArgsManager& args) {
+    // Parameter construction also runs before argument parsing to format help.
+    // Executable entry points enforce the explicit network selection separately.
+    explicit CDevNetParams(const ArgsManager&) {
         strNetworkID = CBaseChainParams::DEVNET;
         consensus.nSubsidyHalvingInterval = 210240;
         consensus.nMasternodePaymentsStartBlock = 4010; // not true, but it's ok as long as it's less then nMasternodePaymentsIncreaseBlock
@@ -592,43 +570,43 @@ public:
         consensus.nMinimumChainWork = uint256{};
         consensus.defaultAssumeValid = uint256{};
 
-        pchMessageStart[0] = 0xe2;
-        pchMessageStart[1] = 0xca;
-        pchMessageStart[2] = 0xff;
-        pchMessageStart[3] = 0xce;
-        nDefaultPort = 19799;
-        nDefaultPlatformP2PPort = 22100;
-        nDefaultPlatformHTTPPort = 22101;
+        pchMessageStart[0] = 0xfa;
+        pchMessageStart[1] = 0x4c;
+        pchMessageStart[2] = 0x56;
+        pchMessageStart[3] = 0xb9;
+        nDefaultPort = 19779;
+        nDefaultPlatformP2PPort = 22170;
+        nDefaultPlatformHTTPPort = 22171;
         nPruneAfterHeight = 1000;
         m_assumed_blockchain_size = 0;
         m_assumed_chain_state_size = 0;
 
-        UpdateDevnetSubsidyAndDiffParametersFromArgs(args);
-        genesis = CreateGenesisBlock(1417713337, 1096447, 0x207fffff, 1, 50 * COIN);
+        // Fixed local-test bootstrap parameters, not configurable monetary policy.
+        consensus.nMinimumDifficultyBlocks = 10000;
+        consensus.nHighSubsidyBlocks = 1;
+        consensus.nHighSubsidyFactor = 1;
+        genesis = CreateGenesisBlock(
+            "LAVEPAY 20/Sep/2026 LAVE local development network - no monetary value",
+            CScript() << OP_RETURN, 1789862400, 1, 0x207fffff, 1, 50 * COIN);
         consensus.hashGenesisBlock = genesis.GetHash();
-        assert(consensus.hashGenesisBlock == uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e"));
-        assert(genesis.hashMerkleRoot == uint256S("0xe0028eb9648db56b1ac77cf090b99048a8007e2bb64b68f092c03c7f56a662c7"));
+        assert(consensus.hashGenesisBlock == uint256S("28fae923c5ef15cb623f14f61aae383050712a8ef7ff740bb2b1541d8a3bcf9c"));
+        assert(genesis.hashMerkleRoot == uint256S("4b5a3ecc7369c447d5521c3a40999459245917c4505aa84dc9b5cb06e9bf0b6c"));
 
-        devnetGenesis = FindDevNetGenesisBlock(genesis, 50 * COIN);
+        devnetGenesis = CreateDevNetGenesisBlock(genesis.GetHash(), "devnet-lave-local-v1", 1789862401, 0, 0x207fffff, 50 * COIN);
         consensus.hashDevnetGenesisBlock = devnetGenesis.GetHash();
+        assert(consensus.hashDevnetGenesisBlock == uint256S("2043af4ec0030900338e8ad5eb86428008787d4be468f197d2bcd1776c094209"));
+        assert(devnetGenesis.hashMerkleRoot == uint256S("d4abdb42f52681bab0d03e1935d139211284e65c6419afc7490560c1ffa07ac7"));
 
         vFixedSeeds.clear();
         vSeeds.clear();
-        //vSeeds.push_back(CDNSSeedData("dashevo.org.",  "devnet-seed.dashevo.org."));
-
-        // Testnet Dash addresses start with 'y'
-        base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
-        // Testnet Dash script addresses start with '8' or '9'
-        base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,19);
-        // Testnet private keys start with '9' or 'c' (Bitcoin defaults)
-        base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
-        // Testnet Dash BIP32 pubkeys start with 'tpub' (Bitcoin defaults)
-        base58Prefixes[EXT_PUBLIC_KEY] = {0x04, 0x35, 0x87, 0xCF};
-        // Testnet Dash BIP32 prvkeys start with 'tprv' (Bitcoin defaults)
-        base58Prefixes[EXT_SECRET_KEY] = {0x04, 0x35, 0x83, 0x94};
-
-        // Testnet Dash BIP44 coin type is '1' (All coin's testnet default)
-        nExtCoinType = 1;
+        // Local LAVE encodings deliberately reject Dash mainnet and testnet keys/addresses.
+        // These are development parameters, not globally registered coin identifiers.
+        base58Prefixes[PUBKEY_ADDRESS] = {48}; // L
+        base58Prefixes[SCRIPT_ADDRESS] = {63};
+        base58Prefixes[SECRET_KEY] = {181};
+        base58Prefixes[EXT_PUBLIC_KEY] = {0x02, 0x4c, 0x50, 0x55};
+        base58Prefixes[EXT_SECRET_KEY] = {0x02, 0x4c, 0x50, 0x52};
+        nExtCoinType = 1; // Standard test-network derivation, not an allocated mainnet coin type.
 
         // long living quorum params
         AddLLMQ(Consensus::LLMQType::LLMQ_50_60);
@@ -644,13 +622,6 @@ public:
         consensus.llmqTypePlatform = Consensus::LLMQType::LLMQ_DEVNET_PLATFORM;
         consensus.llmqTypeMnhf = Consensus::LLMQType::LLMQ_DEVNET;
 
-        UpdateDevnetLLMQChainLocksFromArgs(args);
-        UpdateDevnetLLMQInstantSendDIP0024FromArgs(args);
-        UpdateDevnetLLMQPlatformFromArgs(args);
-        UpdateDevnetLLMQMnhfFromArgs(args);
-        UpdateLLMQDevnetParametersFromArgs(args);
-        UpdateDevnetPowTargetSpacingFromArgs(args);
-
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fRequireRoutableExternalIP = true;
@@ -663,14 +634,16 @@ public:
         nPoolMaxParticipants = 20;
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
 
-        vSporkAddresses = {"yjPtiKh2uwk3bDutTEA2q9mCtXyiZRWn55"};
-        nMinSporkKeys = 1;
+        // No inherited Dash authority or local private governance key.
+        // Init leaves CSporkManager in its reject-all default state.
+        vSporkAddresses.clear();
+        nMinSporkKeys = 0;
 
         nCreditPoolPeriodBlocks = 576;
 
         checkpointData = (CCheckpointData) {
             {
-                { 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e")},
+                { 0, consensus.hashGenesisBlock },
                 { 1, devnetGenesis.GetHash() },
             }
         };

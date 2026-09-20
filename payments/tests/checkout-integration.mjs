@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { rpc } from "../lab/rpc.mjs";
 import {
   EXPECTED_CHAIN,
+  CURRENCY,
+  RUNTIME_DIR,
   MERCHANT_API_CREDENTIALS_PATH,
   NODES,
 } from "../lab/config.mjs";
@@ -53,6 +56,7 @@ async function session(origin) {
   const { data, response } = await api(origin, "/api/wallet/status");
   assert.equal(data.chainAvailable, true);
   assert.equal(data.network.chain, EXPECTED_CHAIN);
+  assert.equal(data.currency, CURRENCY);
   const cookie = response.headers.get("set-cookie");
   assert.match(cookie, /HttpOnly; SameSite=Strict/);
   assert.match(data.csrfToken, /^[a-f0-9]{64}$/);
@@ -87,9 +91,11 @@ const request = (origin, action, body, currentSession) =>
 
 const status = (await api(merchant, "/api/status")).data;
 assert.equal(status.network, EXPECTED_CHAIN);
+assert.equal(status.currency, CURRENCY);
 assert.equal(status.connected, true);
 assert.equal(status.capabilities.serverCanSign, false);
 const network = (await api(merchant, "/api/lab/status")).data;
+assert.equal(network.currency, CURRENCY);
 assert.equal(network.onlineNodes, 3);
 assert.equal(network.synchronized, true);
 const payer = await session(customer);
@@ -128,7 +134,7 @@ for (const method of ["sendtoaddress", "walletprocesspsbt", "dumpprivkey"]) {
   await response.text();
 }
 check(
-  "Dash daemon itself denies merchant API spending, signing and private-key export",
+  "Core daemon denies merchant API spending, signing and private-key export",
 );
 
 const key = randomUUID();
@@ -141,6 +147,8 @@ const body = {
 const created = (
   await api(merchant, "/api/invoices", { body, key, expected: 201 })
 ).data.invoice;
+assert.equal(created.currency, CURRENCY);
+assert.match(created.paymentUri, new RegExp(`^${CURRENCY.toLowerCase()}:`));
 assert.equal(
   (await api(merchant, "/api/invoices", { body, key, expected: 201 })).data
     .invoice.id,
@@ -463,7 +471,7 @@ check(
 );
 
 await writeFile(
-  new URL("../.runtime/checkout-integration-report.json", import.meta.url),
+  join(RUNTIME_DIR, "checkout-integration-report.json"),
   JSON.stringify(
     {
       testedAt: new Date().toISOString(),

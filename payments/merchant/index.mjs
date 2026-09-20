@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { MERCHANT_DB_PATH } from "../lab/config.mjs";
 import { MerchantStore } from "./store.mjs";
 import { MerchantService } from "./service.mjs";
 import { merchantContext } from "./runtime.mjs";
@@ -7,7 +8,7 @@ import { createMerchantHttpServer } from "./http.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export function createMerchantApplication({
-  dbPath = resolve(root, ".runtime/merchant/invoices.sqlite"),
+  dbPath = MERCHANT_DB_PATH,
   staticDir = resolve(root, "web/dist"),
   developmentOrigin,
   qrEncoder,
@@ -41,7 +42,8 @@ export function createMerchantApplication({
 
 export async function startMerchant() {
   const app = createMerchantApplication({
-    developmentOrigin: process.env.ATLAS_DEV_ORIGIN,
+    developmentOrigin:
+      process.env.LAVEPAY_DEV_ORIGIN || process.env.ATLAS_DEV_ORIGIN,
   });
   const status = await app.service.status();
   await new Promise((done, reject) => {
@@ -49,7 +51,7 @@ export async function startMerchant() {
     app.server.listen(4173, "127.0.0.1", done);
   });
   console.log(
-    `Atlas merchant: http://127.0.0.1:4173 (${status.connected ? `${status.network}, block ${status.blockHeight}` : status.error})`,
+    `LAVEPAY merchant: http://127.0.0.1:4173 (${status.connected ? `${status.network}, block ${status.blockHeight}` : status.error})`,
   );
   let closing = false;
   const stop = async () => {

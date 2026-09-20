@@ -6,6 +6,7 @@
 LIBRELIC = librelic.la
 
 RELIC_INCLUDES = \
+	-I$(top_builddir)/depends/relic/include \
 	-I$(top_srcdir)/depends/relic/include \
 	-I$(top_srcdir)/depends/relic/include/low \
 	-I$(top_srcdir)/depends/relic/src/tmpl

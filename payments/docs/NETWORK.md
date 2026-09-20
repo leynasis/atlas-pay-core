@@ -1,6 +1,6 @@
 # Legacy isolated Dash regtest
 
-The v0.3 default payment UI uses [the three-node devnet](LAB.md). This document covers only the optional older regtest API on port 4180.
+The current default payment UI uses [the three-node devnet](LAB.md). This document covers only the optional older regtest API on port 4180.
 
 This legacy environment runs the **official, prebuilt Dash Core 23.1.8 release**, not a locally compiled or independently audited fork client. The repository contains the upstream source for further development. These scripts leave consensus unchanged and operate exclusively on an isolated regtest chain. Regtest coins have no monetary value.
 
@@ -31,25 +31,25 @@ a3db11790722d3ca08a5205aa985cb7a8a12f649e6bed7c46d6de480b25c14b5
 
 All runtime files are under the gitignored `payments/.runtime/` directory. Paths resolve relative to the scripts, independent of the shell working directory.
 
-| Item | Value |
-| --- | --- |
-| Datadir | `payments/.runtime/chain` |
-| Regtest files | `payments/.runtime/chain/regtest` |
-| Authentication cookie | `payments/.runtime/chain/regtest/.cookie` |
-| Generated configuration | `payments/.runtime/dash.conf` |
-| Daemon | `payments/.runtime/dashcore-23.1.8/bin/dashd` |
-| RPC | `http://127.0.0.1:19898` |
-| P2P bind | `127.0.0.1:19899`, networking disabled |
-| Wallets | `merchant`, `payer` |
+| Item                    | Value                                         |
+| ----------------------- | --------------------------------------------- |
+| Datadir                 | `payments/.runtime/chain`                     |
+| Regtest files           | `payments/.runtime/chain/regtest`             |
+| Authentication cookie   | `payments/.runtime/chain/regtest/.cookie`     |
+| Generated configuration | `payments/.runtime/dash.conf`                 |
+| Daemon                  | `payments/.runtime/dashcore-23.1.8/bin/dashd` |
+| RPC                     | `http://127.0.0.1:19898`                      |
+| P2P bind                | `127.0.0.1:19899`, networking disabled        |
+| Wallets                 | `merchant`, `payer`                           |
 
 The daemon is always given an explicit datadir, configuration file and `-regtest=1`. It never reads the user's default Dash datadir. Peer discovery, DNS seeds, Tor listeners, port mapping and P2P activity are disabled. RPC binds only to IPv4 loopback and uses Dash's generated cookie; no static username/password is stored in source or browser code.
 
 The backend can import the helper:
 
 ```js
-import { rpc, assertRegtest } from '../network/rpc.mjs';
+import { rpc, assertRegtest } from "../network/rpc.mjs";
 await assertRegtest();
-const address = await rpc('getnewaddress', ['invoice-123'], 'merchant');
+const address = await rpc("getnewaddress", ["invoice-123"], "merchant");
 ```
 
 `rpc(method, params = [], wallet, { timeout = 15000 } = {})` reads the cookie for each request and returns the JSON-RPC result. RPC exceptions retain the numerical `.code`. The helper has no configurable remote URL. `assertRegtest()` rejects other chains, active networking and connected peers. Never log, return to a browser, or commit the authentication cookie.

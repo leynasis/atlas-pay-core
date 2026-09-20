@@ -1,9 +1,9 @@
-# Prototype security boundaries — v0.3
+# Prototype security boundaries — v0.4
 
 This is a loopback development system with valueless test coins. HTTP and RPC services are not ready for internet exposure.
 
-- The default payment flow pins `devnet-atlas-local-v1` and both genesis hashes. The optional legacy API separately requires isolated regtest.
-- Merchant RPC credentials are restricted by Dash itself to derivation and required reads. They cannot sign, send, export keys or stop nodes. The node's merchant wallet still contains keys: it is not watch-only.
+- The default payment flow pins `devnet-lave-local-v1`, both new genesis hashes and the LAVE request currency. The explicit Atlas profile pins its original `devnet-atlas-local-v1` identity, data and DASH units. The optional legacy API separately requires isolated regtest.
+- Merchant RPC credentials are restricted by the selected Core daemon to derivation and required reads. They cannot sign, send, export keys or stop nodes. The node's merchant wallet still contains keys: it is not watch-only.
 - Customer payment and merchant refund signing happen in separate role-bound wallet processes with separate durable journals. No private keys or RPC credentials are returned to browsers.
 - Wallet POST requests require exact Host/Origin, a role-specific HttpOnly SameSite session cookie and a secret CSRF header. Merchant endpoints have Host/Origin checks but no merchant account authentication.
 - Browser navigation and preparation do not authorize a spend. A separate explicit approval must match the concrete transaction fingerprint; source details are fetched again before a fresh signature.
@@ -21,6 +21,8 @@ Separate processes, wallets and RPC credentials do not protect against a process
 ## Runtime data
 
 `.runtime/` contains node wallets, administrator cookies, limited credentials, binaries, invoices and signing journals including signed raw transactions. It is excluded from Git. Never publish or copy it into a deliverable. Test keys remain secrets despite having no monetary value.
+
+The LAVE runtime is compiled from this repository with local build provenance. It is not an independently audited or reproducibly distributed mainnet release. Its changed P2P bytes, genesis and local address/key prefixes do not prove general transaction replay isolation. Atlas continues to use the separately checksum-verified official Dash runtime.
 
 ## Before production
 

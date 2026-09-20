@@ -135,7 +135,7 @@ static bool AppInit(NodeContext& node, int argc, char* argv[])
         if (args.IsArgSet("-version")) {
             strUsage += FormatParagraph(LicenseInfo());
         } else {
-            strUsage += "\nUsage:  dashd [options]                     Start " PACKAGE_NAME "\n"
+            strUsage += "\nUsage:  laved [options]                     Start " PACKAGE_NAME "\n"
                 "\n";
             strUsage += args.GetHelpMessage();
         }
@@ -158,12 +158,19 @@ static bool AppInit(NodeContext& node, int argc, char* argv[])
         if (!CheckDataDirOption()) {
             return InitError(Untranslated(strprintf("Specified data directory \"%s\" does not exist.\n", args.GetArg("-datadir", ""))));
         }
-        if (!args.ReadConfigFiles(error, true)) {
-            return InitError(Untranslated(strprintf("Error reading configuration file: %s\n", error)));
-        }
-        // Check for chain settings (Params() calls are only valid after this clause)
+        // Configuration can throw on conflicting chain flags. Return before
+        // shutdown attempts to use chain parameters that have not been selected.
         try {
+            if (!args.ReadConfigFiles(error, true)) {
+                return InitError(Untranslated(strprintf("Error reading configuration file: %s\n", error)));
+            }
+            RequireLaveLocalChain(args);
             SelectParams(args.GetChainName());
+            // Local builds do not discover or listen for public peers by default.
+            args.SoftSetBoolArg("-listen", false);
+            args.SoftSetBoolArg("-discover", false);
+            args.SoftSetBoolArg("-dnsseed", false);
+            args.SoftSetBoolArg("-listenonion", false);
         } catch (const std::exception& e) {
             return InitError(Untranslated(strprintf("%s\n", e.what())));
         }
@@ -171,7 +178,7 @@ static bool AppInit(NodeContext& node, int argc, char* argv[])
         // Error out when loose non-argument tokens are encountered on command line
         for (int i = 1; i < argc; i++) {
             if (!IsSwitchChar(argv[i][0])) {
-                return InitError(Untranslated(strprintf("Command line contains unexpected token '%s', see dashd -h for a list of options.\n", argv[i])));
+                return InitError(Untranslated(strprintf("Command line contains unexpected token '%s', see laved -h for a list of options.\n", argv[i])));
             }
         }
 

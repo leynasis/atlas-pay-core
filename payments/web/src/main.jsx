@@ -1,3 +1,4 @@
+import { currencyFor, profileFor, networkFor } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -344,7 +345,7 @@ Object.assign(words.ru, {
 Object.assign(words.en, {
   currencyHeading: "LAVE — the currency of LAVEPAY",
   currencyNote:
-    "LAVE is the chosen name of our currency. This prototype currently uses local Dash test coins, so amounts remain denominated in DASH. LAVE has not been issued yet.",
+    "Currency and chain are shown from the selected network profile.",
   test: "LAVEPAY local devnet",
   testNote: "Independent local chain · Test coins only",
   blockchain: "LAVEPAY DEVNET",
@@ -372,7 +373,7 @@ Object.assign(words.en, {
   partialNote:
     "A partial payment was received. Check the receipt before proceeding; confirmed funds can be refunded.",
   waitNote:
-    "This invoice accepts local LAVEPAY devnet DASH only. The customer wallet shows the network, recipient, amount and fee before signing.",
+    "This invoice accepts only the test currency of its selected local network. The customer wallet shows the network, recipient, amount and fee before signing.",
   reviewBody:
     "This receipt needs review. Only actions explicitly available below can proceed.",
   step2Body: "Open the customer wallet and approve the transaction.",
@@ -386,8 +387,7 @@ Object.assign(words.en, {
 });
 Object.assign(words.ru, {
   currencyHeading: "LAVE — валюта системы LAVEPAY",
-  currencyNote:
-    "LAVE — выбранное название нашей валюты. Сейчас прототип использует локальные тестовые монеты Dash, поэтому суммы обозначены DASH. Выпуск LAVE ещё впереди.",
+  currencyNote: "Валюта и цепочка отображаются по выбранному профилю сети.",
   test: "Локальная devnet LAVEPAY",
   testNote: "Отдельная локальная цепочка · Тестовые монеты",
   blockchain: "LAVEPAY DEVNET",
@@ -415,7 +415,7 @@ Object.assign(words.ru, {
   partialNote:
     "Получена часть суммы. Проверьте поступление; подтверждённые средства можно вернуть.",
   waitNote:
-    "Принимаются только тестовые DASH локальной devnet LAVEPAY. Кошелёк покупателя покажет сеть, получателя, сумму и комиссию до подписания.",
+    "Принимается только тестовая валюта выбранной локальной сети. Кошелёк покупателя покажет сеть, получателя, сумму и комиссию до подписания.",
   reviewBody:
     "Это поступление требует проверки. Доступны только явно разрешённые действия ниже.",
   step2Body: "Откройте кошелёк покупателя и одобрите транзакцию.",
@@ -427,6 +427,65 @@ Object.assign(words.ru, {
   unsupportedWallet: "Для этого счёта одобрение в кошельке недоступно.",
   legacy: "Прежняя regtest",
 });
+function activeWords(locale, status) {
+  const base = words[locale] || words.en;
+  const currency = currencyFor(status);
+  const profile = profileFor(status);
+  const name = networkFor(status);
+  const ru = locale === "ru";
+  return {
+    ...base,
+    currency,
+    currencyHeading:
+      profile === "lave"
+        ? ru
+          ? "LAVE — локальная валюта LAVEPAY"
+          : "LAVE — LAVEPAY’s local currency"
+        : profile === "atlas" || profile === "regtest"
+          ? ru
+            ? "DASH — прежний тестовый профиль"
+            : "DASH — the existing test profile"
+          : ru
+            ? "Валюта выбранной сети"
+            : "Currency of the selected network",
+    currencyNote:
+      profile === "lave"
+        ? ru
+          ? "Этот профиль использует собранный из исходников LAVE Core и отдельную локальную цепочку. Тестовые LAVE не имеют денежной стоимости. Публичная основная сеть и международные платежи не запущены."
+          : "This profile uses LAVE Core built from source and a separate local chain. Test LAVE has no monetary value. No public mainnet or international payment service has launched."
+        : profile === "atlas" || profile === "regtest"
+          ? ru
+            ? "Этот профиль сохраняет прежние тестовые DASH, кошельки и историю. Они не преобразуются в LAVE. Новый профиль LAVE использует отдельную цепочку и данные."
+            : "This profile retains the existing test DASH, wallets and history. They are not converted to LAVE. The LAVE profile uses a separate chain and data."
+          : ru
+            ? "Название валюты появится после получения параметров сети от сервера."
+            : "The currency name will appear after the server supplies the network metadata.",
+    amountLabel: ru ? `Сумма в ${currency}` : `Amount in ${currency}`,
+    amountHelp: ru
+      ? `Только тестовые ${currency}. До 8 знаков после запятой.`
+      : `Test ${currency} only. Up to 8 decimal places.`,
+    gross: ru
+      ? `Все входящие платежи · ${currency}`
+      : `Gross incoming payments · ${currency}`,
+    test: ru ? `Локальная devnet · ${name}` : `Local devnet · ${name}`,
+    blockchain: name,
+    networkSub: ru
+      ? `Подключение к узлу продавца · ${name}`
+      : `Merchant node · ${name}`,
+    powered:
+      profile === "lave"
+        ? "LAVE Core · Local prototype"
+        : profile === "atlas" || profile === "regtest"
+          ? "Dash Core · Local prototype"
+          : "Local prototype",
+    waitNote: ru
+      ? "Принимаются только тестовые {currency} выбранной локальной сети. Кошелёк покажет сеть, получателя, сумму и комиссию до подписания."
+      : "This invoice accepts test {currency} on the selected local network. The wallet shows the network, recipient, amount and fee before signing.",
+    connectionNeeded: ru
+      ? "Подключите локальный узел выбранного профиля."
+      : "Connect the selected profile’s local node.",
+  };
+}
 const sats = (value) => {
   const [whole, decimal = ""] = String(value || "0").split(".");
   return (
@@ -641,7 +700,7 @@ function InvoiceForm({ t, onClose, onCreated }) {
               required
               autoComplete="off"
             />
-            <span>DASH</span>
+            <span>{t.currency}</span>
           </div>
           <small>{t.amountHelp}</small>
         </label>
@@ -685,6 +744,7 @@ function Detail({
   status,
   checkout = false,
 }) {
+  const currency = currencyFor(i, status);
   const [busy, setBusy] = useState(""),
     [error, setError] = useState(""),
     [refundAddress, setRefundAddress] = useState("");
@@ -772,7 +832,7 @@ function Detail({
           )}
           <div className="amount-label">{t.requested}</div>
           <div className="payment-amount">
-            {coin(i.amount)} <span>DASH</span>
+            {coin(i.amount)} <span>{currency}</span>
           </div>
           <div className="test-chip">
             <FlaskConical size={12} />
@@ -784,7 +844,7 @@ function Detail({
             ) : (
               <CircleDot size={19} />
             )}
-            <p>{t[note]}</p>
+            <p>{t[note]?.replace("{currency}", currency)}</p>
           </div>
           <div className="qr-wrap">
             <img
@@ -794,10 +854,7 @@ function Detail({
               height="184"
             />
             <div className="qr-caption">
-              DASH{" "}
-              <span>
-                {status?.network === "regtest" ? "REGTEST" : "LAVEPAY DEVNET"}
-              </span>
+              {currency} <span>{networkFor(status)}</span>
             </div>
           </div>
           <CopyField
@@ -817,29 +874,39 @@ function Detail({
           <div className="detail-facts">
             <div>
               <span>{t.received}</span>
-              <strong>{coin(i.receivedAmount)} DASH</strong>
+              <strong>
+                {coin(i.receivedAmount)} {currency}
+              </strong>
             </div>
             <div>
               <span>{t.confirmed}</span>
-              <strong>{coin(i.confirmedAmount)} DASH</strong>
+              <strong>
+                {coin(i.confirmedAmount)} {currency}
+              </strong>
             </div>
             {i.refundRequestId && (
               <div>
                 <span>{t.requestedRefund}</span>
-                <strong>{coin(i.requestedRefundAmount)} DASH</strong>
+                <strong>
+                  {coin(i.requestedRefundAmount)} {currency}
+                </strong>
               </div>
             )}
             {i.refundTxid && (
               <div>
                 <span>{t.refundedAmount}</span>
-                <strong>{coin(i.refundAmount)} DASH</strong>
+                <strong>
+                  {coin(i.refundAmount)} {currency}
+                </strong>
               </div>
             )}
             {i.additionalReceivedAfterRefund &&
               sats(i.additionalReceivedAfterRefund) > 0n && (
                 <div>
                   <span>{t.additionalReceipt}</span>
-                  <strong>{coin(i.additionalReceivedAfterRefund)} DASH</strong>
+                  <strong>
+                    {coin(i.additionalReceivedAfterRefund)} {currency}
+                  </strong>
                 </div>
               )}
             <div>
@@ -991,7 +1058,6 @@ function App() {
       localStorage.getItem("atlas-language") ||
       (navigator.language.startsWith("ru") ? "ru" : "en"),
   );
-  const t = words[locale] || words.en;
   const [invoices, setInvoices] = useState([]),
     [status, setStatus] = useState(null),
     [loading, setLoading] = useState(true),
@@ -1008,6 +1074,7 @@ function App() {
     [mining, setMining] = useState(false),
     [toast, setToast] = useState(null),
     [checkoutInvoice, setCheckoutInvoice] = useState(null);
+  const t = activeWords(locale, status);
   function navigatePage(next) {
     setPage(next);
     history.replaceState(
@@ -1184,6 +1251,16 @@ function App() {
   const openItems = invoices.filter((i) =>
     ["pending", "partial", "detected"].includes(i.status),
   );
+  const invoiceCurrencies = new Set(
+    invoices.map((invoice) => currencyFor(invoice)),
+  );
+  const aggregateCurrency =
+    invoiceCurrencies.size === 0
+      ? t.currency
+      : invoiceCurrencies.size === 1
+        ? [...invoiceCurrencies][0]
+        : "—";
+  const aggregateKnown = aggregateCurrency !== "—";
   const receipts = invoices.reduce((n, i) => n + sats(i.confirmedAmount), 0n);
   const remaining = openItems.reduce((n, i) => {
     const difference = sats(i.amount) - sats(i.receivedAmount);
@@ -1246,11 +1323,7 @@ function App() {
               <Blocks size={19} />
             </div>
             <div>
-              <strong>
-                {status?.network === "regtest"
-                  ? "Dash regtest"
-                  : "LAVEPAY devnet"}
-              </strong>
+              <strong>{networkFor(status)}</strong>
               <span>{status?.connected ? t.connected : t.disconnected}</span>
             </div>
             <i className={status?.connected ? "online-dot" : "offline-dot"} />
@@ -1314,7 +1387,7 @@ function App() {
                 <p>{t.howSub}</p>
               </div>
               <section className="currency-brand-card">
-                <span className="currency-brand-symbol">LAVE</span>
+                <span className="currency-brand-symbol">{t.currency}</span>
                 <div>
                   <h2>{t.currencyHeading}</h2>
                   <p>{t.currencyNote}</p>
@@ -1358,14 +1431,14 @@ function App() {
                       </span>
                     </div>
                     <div className="stat-value">
-                      {loading || (error && !invoices.length)
+                      {loading || !aggregateKnown || (error && !invoices.length)
                         ? "—"
                         : coin(receipts)}{" "}
-                      <small>DASH</small>
+                      <small>{aggregateCurrency}</small>
                     </div>
                     <div className="stat-note">
                       <span className="green-dot" />
-                      {t.gross}
+                      {t.gross.replace(t.currency, aggregateCurrency)}
                     </div>
                     <div className="stat-decoration" />
                   </div>
@@ -1377,10 +1450,10 @@ function App() {
                       </span>
                     </div>
                     <div className="stat-value">
-                      {loading || (error && !invoices.length)
+                      {loading || !aggregateKnown || (error && !invoices.length)
                         ? "—"
                         : coin(remaining)}{" "}
-                      <small>DASH</small>
+                      <small>{aggregateCurrency}</small>
                     </div>
                     <div className="stat-note">
                       {openItems.length} {t.openInvoices}
@@ -1516,7 +1589,7 @@ function App() {
                               </button>
                             </td>
                             <td className="table-amount">
-                              {coin(i.amount)} <span>DASH</span>
+                              {coin(i.amount)} <span>{currencyFor(i)}</span>
                             </td>
                             <td>
                               <Badge
@@ -1568,11 +1641,7 @@ function App() {
                       </div>
                       <div>
                         <h3>{t.network}</h3>
-                        <span>
-                          {status?.network === "regtest"
-                            ? "Dash Core · Regtest"
-                            : "LAVEPAY · atlas-local-v1"}
-                        </span>
+                        <span>{networkFor(status)}</span>
                       </div>
                       <span
                         className={
@@ -1584,7 +1653,8 @@ function App() {
                     <div className="balance-row">
                       <span>{t.merchantBalance}</span>
                       <strong>
-                        {status?.balances?.merchant ?? "—"} <small>DASH</small>
+                        {status?.balances?.merchant ?? "—"}{" "}
+                        <small>{t.currency}</small>
                       </strong>
                     </div>
                     <a className="checkout-link" href="http://127.0.0.1:4174/">

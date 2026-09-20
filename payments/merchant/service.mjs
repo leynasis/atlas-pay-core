@@ -48,9 +48,12 @@ function negativeAmount(value) {
   return rpcAmount(value.slice(1));
 }
 export function invoiceView(invoice) {
-  return Object.fromEntries(
-    Object.entries(invoice).filter(([key]) => !key.startsWith("_")),
-  );
+  return {
+    ...Object.fromEntries(
+      Object.entries(invoice).filter(([key]) => !key.startsWith("_")),
+    ),
+    currency: invoice._paymentRequest?.network?.currency || "DASH",
+  };
 }
 function paymentState(invoice, received, confirmed, now) {
   if (invoice.refundTxid) return "refund_pending";
@@ -128,6 +131,14 @@ export class MerchantService {
   required(id) {
     const invoice = this.store.get(id);
     if (!invoice) throw new AppError("NOT_FOUND", "Invoice not found.", 404);
+    if (
+      canonical(invoice._paymentRequest?.network) !== canonical(this.identity)
+    )
+      throw new AppError(
+        "WRONG_NETWORK",
+        "Stored invoice belongs to a different blockchain. Select its original network profile.",
+        409,
+      );
     return invoice;
   }
   async status() {
@@ -136,7 +147,9 @@ export class MerchantService {
       mode: "devnet",
       connected: false,
       blockHeight: null,
-      currency: "DASH",
+      currency: this.identity.currency || "DASH",
+      profile: this.identity.currency === "LAVE" ? "lave" : "atlas",
+      devnetName: this.identity.devnetName,
       balances: { merchant: "0" },
       capabilities: {
         instantSend: false,
@@ -344,7 +357,16 @@ export class MerchantService {
             "This key belongs to a different request.",
             409,
           );
-        if (previous.state === "complete") return previous.response;
+        if (previous.state === "complete") {
+          const original = this.required(previous.response.invoice.id);
+          return {
+            ...previous.response,
+            invoice: {
+              ...previous.response.invoice,
+              currency: original._paymentRequest.network.currency || "DASH",
+            },
+          };
+        }
         // Receipt registration only reads chain proof and atomically records an
         // existing transaction. It can resume safely after a transient error or
         // a crash, with the original payload fingerprint still enforced.
@@ -438,7 +460,7 @@ export class MerchantService {
       const id = randomUUID();
       control.addressRequested();
       const address = await this.rpc("getnewaddress", [
-        `atlas-devnet-invoice:${id}`,
+        `lavepay-devnet-invoice:${id}`,
       ]);
       if (typeof address !== "string" || !/^[A-Za-z0-9]{20,90}$/.test(address))
         throw new Error("Invalid node address");
@@ -467,7 +489,7 @@ export class MerchantService {
         address,
         createdAt,
         expiresAt,
-        paymentUri: `dash:${address}?${new URLSearchParams({ amount: formatAmount(sats), label: merchantName, message: description })}`,
+        paymentUri: `${this.identity.currency === "LAVE" ? "lave" : "dash"}:${address}?${new URLSearchParams({ amount: formatAmount(sats), label: merchantName, message: description })}`,
         checkoutUrl: `http://127.0.0.1:4173/pay/${id}`,
         status: "pending",
         receivedAmount: "0",

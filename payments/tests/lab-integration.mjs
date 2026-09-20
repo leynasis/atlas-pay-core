@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import {
+  PROFILE,
+  CURRENCY,
   DEVNET_GENESIS_HASH,
   EXPECTED_CHAIN,
   GENESIS_HASH,
@@ -28,7 +33,35 @@ const check = (name) => {
   results.push(name);
   console.log(`PASS ${name}`);
 };
-const initialRegtest = await legacyRpc("getblockchaininfo");
+async function optionalRegtest() {
+  try {
+    return await legacyRpc("getblockchaininfo");
+  } catch (error) {
+    if (error.code === "ENOENT" || error.cause?.code === "ECONNREFUSED")
+      return null;
+    throw error;
+  }
+}
+async function atlasStatus() {
+  const exec = promisify(execFile);
+  let output;
+  try {
+    output = (
+      await exec(
+        process.execPath,
+        [fileURLToPath(new URL("../lab/status.mjs", import.meta.url))],
+        { env: { ...process.env, LAVEPAY_NETWORK: "atlas" } },
+      )
+    ).stdout;
+  } catch (error) {
+    // status exits with code 1 when one or more optional Atlas nodes are down.
+    if (error.code !== 1 || !error.stdout) throw error;
+    output = error.stdout;
+  }
+  return JSON.parse(output);
+}
+const initialRegtest = await optionalRegtest();
+const initialAtlas = PROFILE === "lave" ? await atlasStatus() : null;
 const before = await getLabStatus();
 await startLab();
 let status = await getLabStatus();
@@ -68,12 +101,11 @@ assert.equal(
   parseAmount("5"),
 );
 assert.throws(
-  () =>
-    verifyIdentity(EXPECTED_CHAIN, GENESIS_HASH, initialRegtest.bestblockhash),
+  () => verifyIdentity(EXPECTED_CHAIN, GENESIS_HASH, "0".repeat(64)),
   /identity mismatch/,
 );
 check(
-  "Named genesis pinned; 50 DASH block1 and normal 5 DASH block2; wrong genesis rejected",
+  `Named genesis pinned; 50 ${CURRENCY} block1 and normal 5 ${CURRENCY} block2; wrong genesis rejected`,
 );
 
 for (const id of NODE_IDS) {
@@ -99,9 +131,7 @@ for (const id of NODE_IDS) {
     await response.text();
   }
 }
-check(
-  "Dash itself denies send, stop and wallet reads to every dashboard credential",
-);
+check("Core denies send, stop and wallet reads to every dashboard credential");
 
 await assertLabNode("customer");
 const customerAddress = await rpc(
@@ -191,10 +221,22 @@ try {
   await waitForSync();
 }
 
-const finalRegtest = await legacyRpc("getblockchaininfo");
-assert.equal(finalRegtest.bestblockhash, initialRegtest.bestblockhash);
-assert.equal(finalRegtest.blocks, initialRegtest.blocks);
-check("Original single-node regtest chain is untouched");
+if (initialRegtest) {
+  const finalRegtest = await legacyRpc("getblockchaininfo");
+  assert.equal(finalRegtest.bestblockhash, initialRegtest.bestblockhash);
+  assert.equal(finalRegtest.blocks, initialRegtest.blocks);
+  check("Original single-node regtest chain is untouched");
+}
+if (initialAtlas?.onlineNodes) {
+  const finalAtlas = await atlasStatus();
+  for (const original of initialAtlas.nodes.filter((node) => node.online)) {
+    const current = finalAtlas.nodes.find((node) => node.id === original.id);
+    assert.equal(current.online, true);
+    assert.equal(current.bestBlockHash, original.bestBlockHash);
+    assert.equal(current.height, original.height);
+  }
+  check("Previously running Atlas devnet nodes retain their original tips");
+}
 const finalStatus = await getLabStatus();
 await writeFile(
   join(LAB_DIR, "integration-report.json"),

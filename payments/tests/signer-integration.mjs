@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+import { SIGNER_DIR, CURRENCY } from "../lab/config.mjs";
 import { CustomerSigner, createPaymentRequest } from "../signer/service.mjs";
 import { SignerStore } from "../signer/store.mjs";
 import {
@@ -23,9 +24,9 @@ const merchant = await labContext("merchant");
 await Promise.all(
   ["miner", "merchant", "customer"].map((node) => assertLabNode(node)),
 );
-const runtime = fileURLToPath(new URL("../.runtime/signer/", import.meta.url));
+const runtime = SIGNER_DIR;
 await mkdir(runtime, { recursive: true, mode: 0o700 });
-const dbPath = `${runtime}integration.sqlite`;
+const dbPath = join(runtime, "integration.sqlite");
 let store = new SignerStore(dbPath);
 let sendCount = 0;
 let signCount = 0;
@@ -236,7 +237,7 @@ try {
     .reduce((sum, detail) => sum + rpcAmount(detail.amount), 0n);
   assert.equal(received, 25_000_000n);
   passed(
-    "Transaction propagated across nodes and merchant independently confirmed exactly 0.25 test DASH",
+    `Transaction propagated across nodes and merchant independently confirmed exactly 0.25 test ${CURRENCY}`,
   );
   const cancellation = await createPaymentRequest({
     ...merchant,
@@ -276,7 +277,7 @@ try {
     results,
   };
   await writeFile(
-    `${runtime}integration-report.json`,
+    join(runtime, "integration-report.json"),
     JSON.stringify(report, null, 2) + "\n",
     { mode: 0o600 },
   );
