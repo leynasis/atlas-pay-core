@@ -48,7 +48,7 @@ test("LAVE is the default and all wallets, journals, credentials and ports stay 
     "pidPath",
     "dashboardCredentialsPath",
   ];
-  for (const id of lave.NODE_IDS) {
+  for (const id of atlas.NODE_IDS) {
     for (const path of paths)
       assert.notEqual(lave.NODES[id][path], atlas.NODES[id][path]);
     assert.notEqual(lave.NODES[id].rpcPort, atlas.NODES[id].rpcPort);

@@ -9,6 +9,7 @@ const { service, store } = await openWallet(role);
 const server = createWalletServer({
   service,
   role,
+  journalPath: store.path,
   staticDir: fileURLToPath(new URL("../web/dist", import.meta.url)),
 });
 server.listen(port, "127.0.0.1", () =>

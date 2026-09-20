@@ -34,6 +34,8 @@ export const MERCHANT_API_METHODS = Object.freeze([
   ...READ_ONLY_METHODS,
   "getnewaddress",
   "getbalance",
+  "getwalletinfo",
+  "listdescriptors",
   "listreceivedbyaddress",
   "gettransaction",
   "getmempoolentry",
@@ -41,6 +43,17 @@ export const MERCHANT_API_METHODS = Object.freeze([
   "validateaddress",
   "decoderawtransaction",
 ]);
+export const MINER_API_METHODS = Object.freeze([
+  ...READ_ONLY_METHODS,
+  "getnewaddress",
+  "generatetoaddress",
+  "getmempoolentry",
+]);
+export const MINER_API_CREDENTIALS_PATH = join(
+  LAB_DIR,
+  "miner-api",
+  "credentials.json",
+);
 export const MERCHANT_API_CREDENTIALS_PATH = join(
   LAB_DIR,
   "merchant-api",
@@ -53,6 +66,7 @@ export const NODES = Object.freeze(
       ["miner", "Block producer", 0],
       ["merchant", "Merchant node", 1],
       ["customer", "Customer signer", 2],
+      ...(PROFILE === "lave" ? [["signer", "Merchant signer", 3]] : []),
     ].map(([id, label, offset]) => {
       const rpcPort = PROFILE_CONFIG.rpcBase + offset;
       const p2pPort = PROFILE_CONFIG.p2pBase + offset;
@@ -64,7 +78,12 @@ export const NODES = Object.freeze(
           label,
           rpcPort,
           p2pPort,
-          wallet: id,
+          wallet:
+            PROFILE === "lave" && id === "merchant"
+              ? "cashier"
+              : id === "signer"
+                ? "merchant"
+                : id,
           datadir,
           rpcUrl: `http://127.0.0.1:${rpcPort}`,
           configPath: join(datadir, PROFILE_CONFIG.configFilename),
@@ -82,3 +101,12 @@ export function getNode(nodeId) {
     throw new Error(`Unknown lab node: ${nodeId}`);
   return NODES[nodeId];
 }
+
+export const ROLE_NODES = Object.freeze({
+  customer: "customer",
+  merchant: PROFILE === "lave" ? "signer" : "merchant",
+});
+export const ROLE_WALLETS = Object.freeze({
+  customer: "customer",
+  merchant: "merchant",
+});

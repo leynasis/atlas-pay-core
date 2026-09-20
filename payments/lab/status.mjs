@@ -98,6 +98,7 @@ if (
 ) {
   getLabStatus().then((status) => {
     console.log(JSON.stringify(status, null, 2));
-    if (status.onlineNodes !== 3 || !status.synchronized) process.exitCode = 1;
+    if (status.onlineNodes !== NODE_IDS.length || !status.synchronized)
+      process.exitCode = 1;
   });
 }

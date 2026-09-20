@@ -5,6 +5,7 @@ import { SignerError } from "./policy.mjs";
 
 export class SignerStore {
   constructor(path) {
+    this.path = path;
     if (path !== ":memory:")
       mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);

@@ -10,7 +10,7 @@ import {
   validateRequest,
 } from "../signer/policy.mjs";
 import { labContext } from "../signer/runtime.mjs";
-import { rpc, assertLabNode } from "../lab/rpc.mjs";
+import { rpc as physicalRpc, assertLabNode } from "../lab/rpc.mjs";
 import { waitUntil, mineBlocks } from "../lab/lifecycle.mjs";
 import { rpcAmount, formatAmount } from "../server/money.mjs";
 
@@ -21,6 +21,10 @@ function passed(label) {
 }
 const customer = await labContext("customer");
 const merchant = await labContext("merchant");
+const rpc = (node, method, params, wallet, options) =>
+  node === "merchant"
+    ? merchant.rpc(node, method, params, wallet)
+    : physicalRpc(node, method, params, wallet, options);
 await Promise.all(
   ["miner", "merchant", "customer"].map((node) => assertLabNode(node)),
 );
@@ -208,10 +212,20 @@ try {
   passed(
     "Real customer signature and transaction recover after simulated lost response and SQLite restart without duplicate broadcast",
   );
-  await waitUntil(
-    async () => (await rpc("miner", "getrawmempool")).includes(result.txid),
-    "Customer transaction did not reach miner",
-  );
+  await waitUntil(async () => {
+    if ((await rpc("miner", "getrawmempool")).includes(result.txid))
+      return true;
+    // Another local application may mine between broadcast and observation.
+    const tx = await rpc(
+      "customer",
+      "gettransaction",
+      [result.txid],
+      "customer",
+    );
+    if (!tx.blockhash || tx.confirmations < 1) return false;
+    const block = await rpc("miner", "getblock", [tx.blockhash, 1]);
+    return block.confirmations > 0 && block.tx.includes(result.txid);
+  }, "Customer transaction did not reach miner");
   await mineBlocks(1);
   await waitUntil(async () => {
     try {

@@ -1,12 +1,12 @@
-# LAVEPAY v0.3 local API
+# LAVEPAY v0.5 local API
 
-Default applications bind only `127.0.0.1`: merchant/checkout `4173`, customer wallet `4174`, merchant refund wallet `4175`. All monetary operations pin `devnet-atlas-local-v1` and both genesis hashes. Amounts are exact decimal strings in valueless test DASH. LAVE is the selected currency name for the future network; this API still reports `currency: "DASH"` for its existing runtime. Branding does not change chain IDs, request hashes, amounts or transaction formats.
+Default applications bind only `127.0.0.1`: merchant/checkout `4173`, customer wallet `4174`, merchant refund wallet `4175`. The default profile pins `devnet-lave-local-v1`, both genesis hashes and `currency: "LAVE"`. Explicit `LAVEPAY_NETWORK=atlas` retains its original chain identity and test DASH; amounts are exact decimal strings. These are valueless local test units. The default LAVE cashier is watch-only, while the private refund wallet runs on its separate signer node.
 
 ## Merchant — port 4173
 
 | Method / path | Input | Result |
 |---|---|---|
-| `GET /api/status` | — | Network, connected state, block height, merchant balance, wallet URLs, capabilities including `serverCanSign: false` |
+| `GET /api/status` | — | Network, connected state, block height, merchant balance, wallet URLs, capabilities including `serverCanSign: false`, `watchOnly`, and payment-chain `instantSend: false`, `chainLocks: false` |
 | `GET /api/invoices` | — | `{ invoices }`, refreshed from chain |
 | `POST /api/invoices` | `{ amount, description, merchantName, expiresInMinutes }` + UUID `Idempotency-Key` | HTTP 201 `{ invoice }` |
 | `GET /api/invoices/:id` | — | `{ invoice }` |
@@ -16,7 +16,8 @@ Default applications bind only `127.0.0.1`: merchant/checkout `4173`, customer w
 | `GET /api/invoices/:id/refund-request` | — | `{ invoice, request }` for pending immutable refund |
 | `POST /api/invoices/:id/refund-receipt` | `{ requestId, txid }` + UUID key | `{ invoice, txid }` after independent wallet/transaction verification |
 | `POST /api/dev/mine` | `{ blocks: 1..10, invoiceId? }` | Local test mining result; waits for known pending transactions to relay |
-| `GET /api/lab/status` | — | Three-node read-only snapshot |
+| `GET /api/masternodes/status` | — | Sanitized LAVE-Q snapshot, separate from payment network; explicit stale/verified proof fields |
+| `GET /api/lab/status` | — | Selected payment network snapshot (four LAVE nodes; three legacy Atlas nodes) |
 
 There is no merchant `/pay`, `/refund`, signing or generic RPC endpoint. Request creation does not spend. Changing a payload under the same idempotency key conflicts. Refund addresses must be explicit and outside the merchant wallet; the API does not infer a customer's destination from input addresses.
 
@@ -32,6 +33,7 @@ Requests include version, UUID, recipient, exact amount/satoshis, merchant label
 - Every POST requires exact same-origin `Origin`, that cookie, `X-CSRF-Token`, and `Content-Type: application/json`.
 - `POST /api/wallet/prepare` accepts `{ invoiceId, kind: "payment" | "refund" }`. Role must match the operation. Fetches the request from fixed merchant port 4173 and returns `{ review }`; no signature yet.
 - `POST /api/wallet/approve` accepts `{ requestId, fingerprint }` and returns `{ review }`. The displayed transaction fingerprint must match. A fresh signature first rechecks the merchant request. A previously signed transaction can only be reconciled/rebroadcast as the same bytes.
+- `POST /api/wallet/backup` accepts only `{ password }` (12–1024 UTF-8 bytes) and returns an encrypted binary attachment containing the native wallet and signing journal. Existing Host/Origin/session/CSRF checks and the 16 KiB request limit apply. LAVE descriptor wallets only. `RECOVERY_LOCKED` archives retain that lock. See [recovery](docs/WALLET.md).
 - `POST /api/wallet/cancel` accepts `{ requestId }`, only for unsigned prepared drafts.
 - `GET /api/wallet/requests/:id` restores `{ review }`, including current chain confirmation state and refund receipt synchronization. A receipt may retry without another signature.
 
@@ -39,7 +41,7 @@ Review fields include `id, role, invoiceId, kind, state, merchantName, descripti
 
 ## HTTP and legacy support
 
-Host/Origin are restricted, CORS is absent, frames are denied, wallet responses are no-store. These controls are not merchant account authentication or protection from another process with the same OS user's filesystem access. RPC secrets, PSBTs and private keys are not returned to the browser. Errors use `{ error: { code, message } }`.
+Host/Origin are restricted, CORS is absent, frames are denied, wallet responses are no-store. These controls are not owner authentication. The standard macOS launcher additionally confines the cashier process; unsandboxed same-user processes and the host owner remain trusted. RPC secrets, PSBTs and plaintext private keys are not returned to the browser. The explicit backup endpoint returns password-encrypted wallet bytes. Errors use `{ error: { code, message } }`.
 
 For merchant frontend development only, `npm run start:dev` allows exact Vite origin `http://127.0.0.1:5173`; `npm run dev` proxies the API. Wallet signing stays on its fixed ports with exact origin checks.
 

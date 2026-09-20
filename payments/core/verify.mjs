@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import {
   PROFILE,
   NODE_IDS,
+  NODES,
   GENESIS_HASH,
   DEVNET_GENESIS_HASH,
   LAB_DIR,
@@ -108,13 +109,14 @@ for (const node of NODE_IDS) {
   assert.equal(state.genesisHash, GENESIS_HASH);
   assert.equal(state.devnetGenesisHash, DEVNET_GENESIS_HASH);
   assert.match(state.network.subversion, /LAVE/);
-  const wallet = await rpc(node, "getwalletinfo", [], node);
+  const wallet = await rpc(node, "getwalletinfo", [], NODES[node].wallet);
   assert.equal(wallet.descriptors, true);
+  assert.equal(wallet.private_keys_enabled, node !== "merchant");
   const received = await rpc(
     node,
-    "getnewaddress",
-    ["core-verification"],
-    node,
+    node === "signer" ? "getrawchangeaddress" : "getnewaddress",
+    node === "signer" ? [] : ["core-verification"],
+    NODES[node].wallet,
   );
   assert.match(received, /^L/);
   for (const prefix of [76, 16, 140, 19]) {

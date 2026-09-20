@@ -1,19 +1,19 @@
-# LAVE Core local chain v1
+# LAVE Core local development chains — v0.5
 
-LAVE Core v0.4 is a source-built development fork of Dash Core 23.1.8. The
+The LAVEPAY v0.5 runtime is a source-built LAVE Core development fork of Dash Core 23.1.8. The
 native version remains 23.1.8 so upstream protocol compatibility is explicit;
 the client user agent is `LAVE Core`. Copyright and license notices are retained.
 This is a local test currency with no monetary value. It is not a public testnet
 or a production monetary network.
 
-The shipped daemon and RPC client accept only an explicit
-`-devnet=lave-local-v1`. Omitting the network, selecting Dash mainnet/testnet/regtest,
-using `-chain=devnet`, or selecting another devnet is rejected before the daemon
+The shipped daemon and RPC client require an explicit
+`-devnet=lave-local-v1` (payments) or `-devnet=lave-quorum-v1` (isolated quorum lab). Omitting the network, selecting Dash mainnet/testnet/regtest,
+using `-chain=devnet` without an allowed explicit devnet, or selecting another name is rejected before the daemon
 initializes chainstate or the CLI sends an RPC. Upstream parameter constructors
 remain available to native unit tests; this does not enable those networks in
 the shipped executables. Help and version commands work without a network flag.
 
-## Pinned identity
+## Pinned payment-chain identity
 
 | Parameter                              | LAVE local v1                                        |
 | -------------------------------------- | ---------------------------------------------------- |
@@ -31,7 +31,7 @@ the shipped executables. Help and version commands work without a network flag.
 | macOS / Windows data directory         | `LaveCore`                                           |
 | Unix data directory                    | `~/.lavecore`                                        |
 
-The three-node application lab overrides the default ports with separate
+The four-node payment lab overrides the default ports with separate
 loopback ports. Its profile also uses separate data directories, descriptor
 wallets, invoice databases and signer journals. Existing Dash binaries, keys,
 chainstate and historical invoices are not migrated or relabelled as LAVE.
@@ -68,8 +68,10 @@ Altered subsidy/difficulty values and quorum/spacing overrides are rejected.
 There are no DNS seeds, fixed peers, inherited spork signing addresses or local
 spork private keys. A spork manager with no authorized keys rejects updates and
 keeps upstream default spork values. `-sporkaddr`, `-sporkkey` and
-`-minsporkkeys` overrides are rejected. No masternode network has been provisioned;
-InstantSend, ChainLocks and Platform must not be advertised as operational.
+`-minsporkkeys` overrides are rejected. The payment profile has no provisioned
+masternode quorums: its InstantSend and ChainLocks capabilities remain false,
+and Platform is not deployed. The separate quorum profile below has its own
+pinned experiment parameters and evidence.
 
 Public peer discovery, inbound listening and onion listening default off in the
 daemon. The application lab explicitly enables only its configured loopback
@@ -82,8 +84,17 @@ procedure.
 Native address, WIF and BIP32 decoding rejects Dash encodings. Descriptor wallets
 use SQLite's `application_id` tied to the chain message magic; a copied Dash
 SQLite wallet therefore fails wallet format/network validation. The supported
-build disables Berkeley DB and creates fresh descriptor wallets. It must not
-reuse Dash wallet directories or seeds.
+build disables Berkeley DB and uses descriptor wallets. It must not reuse Dash
+wallet directories or seeds.
+
+Version 0.5 preserves an existing **LAVE** merchant wallet within the same chain:
+its private keys move to a separate signer node, while the merchant node imports
+only public descriptors into a new `cashier` wallet. Historical invoice addresses
+and balances are checked before the original private wallet is archived. This
+is not a cross-chain import. The cashier's `private_keys_enabled=false` flag and
+inability to sign a funded PSBT verify the custody change; inherited descriptor
+`ismine` semantics alone do not identify private-key possession. See
+[the migration guide](../payments/docs/LAB.md).
 
 The new genesis creates an independent UTXO history, so an ordinary Dash payment
 cannot spend its Dash inputs on LAVE. This is not a change to the transaction
@@ -91,6 +102,22 @@ signature-hash format and is not universal replay protection for deliberately
 reused keys or deliberately duplicated UTXOs. Signed messages use a separate
 LAVE prefix. The payment application additionally verifies the exact chain name,
 height-0 hash and height-1 hash before preparing or signing.
+
+## Isolated LAVE-Q quorum profile
+
+The same executable also accepts `lave-quorum-v1`, with a different base genesis,
+named-devnet genesis, P2P bytes and wallet identity. Its nine loopback nodes
+(controller plus eight masternodes) use RPC20101–20109 and P2P20111–20119, with
+state under `payments/.runtime/masternodes/`. Its valueless unit is **LAVE-Q**,
+not the LAVE payment balance. The ordinary payment application still accepts
+only its `lave` and legacy `atlas` profiles.
+
+Quorum sizes and activation behavior are fixed in source for this separate
+experiment; runtime consensus/authority overrides remain rejected. Startup,
+operator lifecycle, DKG and actual signing evidence are documented in
+[MASTERNODES.md](../payments/docs/MASTERNODES.md). Results must be attributed to
+that chain, not to payment LAVE. Multiple local operators on one host do not
+establish decentralization, and these parameters are not a public-network design.
 
 ## Build and provenance
 
@@ -128,7 +155,7 @@ npm run build
 npm start
 ```
 
-`core:verify` requires the three LAVE nodes running: it checks binary hashes, CLI network guards, chain identity, new LAVE addresses and descriptor wallets. Run `npm run core:test` for the selected native unit suites after building.
+`core:verify` requires the four LAVE payment nodes running: it checks binary hashes, CLI network guards, chain identity, new LAVE addresses and the watch-only/private descriptor-wallet roles. Run `npm run core:test` for the selected native unit suites after building.
 
 The full profile checks include `npm run test:wallet-isolation`. Its negative wallet-format fixture needs the separate official Dash runtime (`npm run network:install`); normal LAVE startup never uses that runtime. Run live
 integration suites serially; they create development-chain state. The Atlas
@@ -151,8 +178,8 @@ After building the native test target:
 make -C payments/.runtime/lave-core/build/src -j4 test/test_dash
 payments/.runtime/lave-core/build/src/test/test_dash --run_test=lave_params_tests,amount_tests,pow_tests,versionbits_tests
 payments/.runtime/lave-core/build/src/test/test_dash --run_test=util_tests/message_sign
-src/test/test_dash --run_test=util_tests/message_verify
-src/test/test_dash --run_test=util_tests/message_hash
+payments/.runtime/lave-core/build/src/test/test_dash --run_test=util_tests/message_verify
+payments/.runtime/lave-core/build/src/test/test_dash --run_test=util_tests/message_hash
 ```
 
 The executable target names remain `dashd`, `dash-cli` and `test_dash` in the
@@ -160,3 +187,9 @@ upstream build graph; the application build script installs the first two as
 `laved` and `lave-cli`. A successful native build, the selected unit suites and
 the live payment/refund/isolation checks should be recorded separately. A source
 change or a web build alone is not evidence that LAVE Core ran.
+
+Application custody and backup verification are separate from native consensus
+tests: `npm run test:cashier`, `npm run test:isolation` and `npm run test:backup`
+check the v0.5 boundaries. The macOS Seatbelt wrapper confines the cashier
+application, not the Core daemon or signing services. See
+[VALIDATION-V05.md](../payments/docs/VALIDATION-V05.md) for recorded evidence.

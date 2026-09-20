@@ -19,8 +19,8 @@ const std::string CBaseChainParams::REGTEST = "regtest";
 
 void SetupChainParamsBaseOptions(ArgsManager& argsman)
 {
-    argsman.AddArg("-chain=<chain>", "Unsupported in this development build; use -devnet=lave-local-v1", ArgsManager::ALLOW_ANY, OptionsCategory::CHAINPARAMS);
-    argsman.AddArg("-devnet=<name>", "Use the LAVE local test chain; the only supported name is lave-local-v1", ArgsManager::ALLOW_ANY, OptionsCategory::CHAINPARAMS);
+    argsman.AddArg("-chain=<chain>", "Unsupported in this development build; use -devnet=lave-local-v1 or -devnet=lave-quorum-v1", ArgsManager::ALLOW_ANY, OptionsCategory::CHAINPARAMS);
+    argsman.AddArg("-devnet=<name>", "Use the LAVE local test chain; supported names are lave-local-v1 and the isolated lave-quorum-v1 laboratory", ArgsManager::ALLOW_ANY, OptionsCategory::CHAINPARAMS);
     argsman.AddArg("-regtest", "Enter regression test mode, which uses a special chain in which blocks can be solved instantly. "
                    "This is intended for regression testing tools and app development. Equivalent to -chain=regtest", ArgsManager::ALLOW_ANY | ArgsManager::DEBUG_ONLY, OptionsCategory::CHAINPARAMS);
     argsman.AddArg("-testnet", "Use the test chain. Equivalent to -chain=test", ArgsManager::ALLOW_ANY, OptionsCategory::CHAINPARAMS);
@@ -45,7 +45,9 @@ std::unique_ptr<CBaseChainParams> CreateBaseChainParams(const std::string& chain
     else if (chain == CBaseChainParams::TESTNET)
         return std::make_unique<CBaseChainParams>("testnet3", 19998, 19996);
     else if (chain == CBaseChainParams::DEVNET)
-        return std::make_unique<CBaseChainParams>(gArgs.GetDevNetName(), 19778, 19776);
+        return std::make_unique<CBaseChainParams>(gArgs.GetDevNetName(),
+            gArgs.GetArg("-devnet", "") == "lave-quorum-v1" ? 19788 : 19778,
+            gArgs.GetArg("-devnet", "") == "lave-quorum-v1" ? 19786 : 19776);
     else if (chain == CBaseChainParams::REGTEST)
         return std::make_unique<CBaseChainParams>("regtest", 19898, 19896);
     else
@@ -60,8 +62,8 @@ void SelectBaseParams(const std::string& chain)
 
 void RequireLaveLocalChain(const ArgsManager& args)
 {
-    if (args.GetChainName() != CBaseChainParams::DEVNET || args.GetArg("-devnet", "") != "lave-local-v1") {
-        throw std::runtime_error("LAVE Core is a local development build. Explicit -devnet=lave-local-v1 is required; Dash mainnet, testnet and regtest are disabled.");
+    if (args.GetChainName() != CBaseChainParams::DEVNET || (args.GetArg("-devnet", "") != "lave-local-v1" && args.GetArg("-devnet", "") != "lave-quorum-v1")) {
+        throw std::runtime_error("LAVE Core is a local development build. Explicit -devnet=lave-local-v1 or -devnet=lave-quorum-v1 is required; Dash mainnet, testnet and regtest are disabled.");
     }
     for (const char* option : {"-sporkaddr", "-sporkkey", "-minsporkkeys", "-llmqchainlocks", "-llmqdevnetparams",
                                "-llmqinstantsenddip0024", "-llmqplatform", "-llmqmnhf", "-powtargetspacing"}) {

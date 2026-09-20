@@ -96,7 +96,7 @@ assert.equal(status.connected, true);
 assert.equal(status.capabilities.serverCanSign, false);
 const network = (await api(merchant, "/api/lab/status")).data;
 assert.equal(network.currency, CURRENCY);
-assert.equal(network.onlineNodes, 3);
+assert.equal(network.onlineNodes, Object.keys(NODES).length);
 assert.equal(network.synchronized, true);
 const payer = await session(customer);
 const seller = await session(refundWallet);
@@ -104,7 +104,7 @@ assert.equal(payer.role, "customer");
 assert.equal(seller.role, "merchant");
 assert.notEqual(payer.cookie.split("=")[0], seller.cookie.split("=")[0]);
 check(
-  "Three local nodes and three HTTP apps use the pinned devnet; role sessions are distinct",
+  "Configured local nodes and three HTTP apps use the pinned devnet; role sessions are distinct",
 );
 
 // Invalid/empty arguments cannot spend or export even if a whitelist regresses.
@@ -112,20 +112,23 @@ const credential = JSON.parse(
   await readFile(MERCHANT_API_CREDENTIALS_PATH, "utf8"),
 );
 for (const method of ["sendtoaddress", "walletprocesspsbt", "dumpprivkey"]) {
-  const response = await fetch(`${NODES.merchant.rpcUrl}/wallet/merchant`, {
-    method: "POST",
-    redirect: "error",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString("base64")}`,
+  const response = await fetch(
+    `${NODES.merchant.rpcUrl}/wallet/${NODES.merchant.wallet}`,
+    {
+      method: "POST",
+      redirect: "error",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString("base64")}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: "1.0",
+        id: "merchant-permission-check",
+        method,
+        params: [],
+      }),
     },
-    body: JSON.stringify({
-      jsonrpc: "1.0",
-      id: "merchant-permission-check",
-      method,
-      params: [],
-    }),
-  });
+  );
   assert.equal(
     response.status,
     403,

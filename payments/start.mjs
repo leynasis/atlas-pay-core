@@ -1,9 +1,13 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { cashierCommand, cashierEnvironment } from "./isolation/profile.mjs";
 
 const root = fileURLToPath(new URL("./", import.meta.url));
 const children = new Set();
 let stopping = false;
+const selected = process.argv[2];
+if (selected && selected !== "merchant")
+  throw new Error("Usage: node start.mjs [merchant]");
 
 function stop(exitCode = 0) {
   if (stopping) return;
@@ -20,10 +24,15 @@ for (const [label, script, ...args] of [
   ["Customer wallet", "wallet/index.mjs", "customer"],
   ["Merchant wallet", "wallet/index.mjs", "merchant"],
 ]) {
-  const child = spawn(process.execPath, [script, ...args], {
+  if (selected === "merchant" && script !== "merchant/index.mjs") continue;
+  const cashier = script === "merchant/index.mjs";
+  const invocation = cashier
+    ? cashierCommand(script, args)
+    : { command: process.execPath, args: [script, ...args] };
+  const child = spawn(invocation.command, invocation.args, {
     cwd: root,
     stdio: "inherit",
-    env: process.env,
+    env: cashier ? cashierEnvironment(invocation.mode) : process.env,
   });
   children.add(child);
   child.once("error", () => {

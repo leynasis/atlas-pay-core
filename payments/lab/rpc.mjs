@@ -4,6 +4,8 @@ import {
   DEVNET_GENESIS_HASH,
   EXPECTED_CHAIN,
   GENESIS_HASH,
+  MINER_API_METHODS,
+  MINER_API_CREDENTIALS_PATH,
   MERCHANT_API_METHODS,
   MERCHANT_API_CREDENTIALS_PATH,
   NODES,
@@ -89,9 +91,12 @@ export async function readOnlyRpc(nodeId, method, params = []) {
 export async function merchantReadRpc(
   method,
   params = [],
-  wallet = "merchant",
+  wallet = NODES.merchant.wallet,
 ) {
-  if (!MERCHANT_API_METHODS.includes(method) || wallet !== "merchant")
+  if (
+    !MERCHANT_API_METHODS.includes(method) ||
+    wallet !== NODES.merchant.wallet
+  )
     throw new Error("Merchant API RPC method or wallet is not allowed.");
   const credential = JSON.parse(
     await readFile(MERCHANT_API_CREDENTIALS_PATH, "utf8"),
@@ -101,6 +106,21 @@ export async function merchantReadRpc(
     method,
     params,
     wallet,
+    `${credential.username}:${credential.password}`,
+  );
+}
+
+export async function minerDevelopmentRpc(method, params = []) {
+  if (!MINER_API_METHODS.includes(method))
+    throw new Error("Development miner RPC method is not allowed.");
+  const credential = JSON.parse(
+    await readFile(MINER_API_CREDENTIALS_PATH, "utf8"),
+  );
+  return request(
+    "miner",
+    method,
+    params,
+    NODES.miner.wallet,
     `${credential.username}:${credential.password}`,
   );
 }

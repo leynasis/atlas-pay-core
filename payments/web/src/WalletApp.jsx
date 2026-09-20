@@ -1,6 +1,7 @@
 import { currencyFor, profileFor, walletStorageKey } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Brand from "./Brand.jsx";
+import WalletBackup from "./WalletBackup.jsx";
 import {
   ArrowLeft,
   ArrowRight,
@@ -905,6 +906,12 @@ export default function WalletApp() {
               {t.network}
               <ExternalLink size={14} />
             </a>
+            <WalletBackup
+              locale={locale}
+              csrfToken={status?.csrfToken}
+              connected={connected}
+              currency={balanceCurrency}
+            />
           </aside>
         </div>
         <footer className="wallet-footer">

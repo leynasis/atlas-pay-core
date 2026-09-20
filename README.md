@@ -2,10 +2,11 @@
 
 A local payment system with merchant invoices, QR checkout, separate customer
 and merchant signing wallets, and independently checked payment/refund receipts.
-Version 0.4 introduces **LAVE Core built from this repository's source** and a
-separate three-node `lave-local-v1` development chain. Its native test unit is
-**LAVE**. These coins have no monetary value; no public mainnet, live payment
-service or fiat conversion is launched.
+Version 0.5 adds a **watch-only cashier, a separate refund-signing node, encrypted
+wallet backups and macOS cashier confinement**. The default four-node
+`lave-local-v1` chain runs LAVE Core built from this repository's source. Its
+native test unit is **LAVE**. These coins have no monetary value; no public
+mainnet, live payment service or fiat conversion is launched.
 
 ```sh
 cd payments
@@ -17,29 +18,33 @@ npm run build
 npm start
 ```
 
-Open **http://127.0.0.1:4173**. The applications require Node.js 22.13+; building
-LAVE Core also requires the native toolchain and libraries described in
-[the build guide](docs/LAVE-CORE.md). The build records source and binary
-hashes locally; it is not a claim of independently reproduced release binaries.
+Open **http://127.0.0.1:4173**. Applications require Node.js 22.13+; building
+LAVE Core requires the native toolchain described in [the build guide](docs/LAVE-CORE.md).
+On macOS, the launcher confines the cashier with Seatbelt. Other operating
+systems currently require an explicitly unconfined local demo:
+`LAVEPAY_ISOLATION=off npm start`. Signing services and the host owner remain
+trusted; this is not production custody or customer-device isolation.
 
-The previous Atlas profile is retained explicitly with `LAVEPAY_NETWORK=atlas`.
-It uses its original Dash binary, test DASH, wallets, invoices and chain data.
-Switching profiles does not migrate or rename balances. See the setup guide
-before switching the three applications, which share the same HTTP ports.
+Existing LAVE invoices and addresses are retained during the watch-only
+migration. The previous Atlas profile is available explicitly with
+`LAVEPAY_NETWORK=atlas`, using its original three nodes, Dash binary, test DASH,
+wallets and chain data. Switching profiles does not convert or rename balances.
 
 - [Setup and payment walkthrough](payments/README.md)
 - [Project scope and upstream baseline](LAVEPAY.md)
 - [LAVE Core source changes and build](docs/LAVE-CORE.md)
 - [Network profiles and identity](payments/docs/NETWORK-SPEC.md)
-- [Three-node laboratory](payments/docs/LAB.md)
-- [Wallet approval and recovery](payments/docs/WALLET.md)
+- [Four-node payment laboratory and migration](payments/docs/LAB.md)
+- [Wallet approval, encrypted backups and recovery](payments/docs/WALLET.md)
 - [Security boundaries](payments/docs/SECURITY.md)
-- [LAVE 0.4 validation results](payments/docs/VALIDATION-V04.md)
+- [Separate LAVE-Q masternode laboratory](payments/docs/MASTERNODES.md)
+- [LAVEPAY 0.5 validation results](payments/docs/VALIDATION-V05.md)
 - [Delivery roadmap](payments/docs/ROADMAP.md)
 
-The local LAVE devnet changes are described separately from inherited Dash
-features. There are no masternode quorums, InstantSend, ChainLocks or independent
-operators in this lab. Upstream source and license notices are retained below.
+Payment-chain InstantSend and ChainLocks remain disabled. The separate LAVE-Q
+laboratory exercises masternodes and quorum behavior on a different chain;
+its results do not confer finality on LAVE payments. All local nodes still share
+one host. Upstream source and license notices are retained below.
 
 ---
 

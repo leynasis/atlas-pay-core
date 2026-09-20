@@ -87,6 +87,7 @@ export function createMerchantHttpServer({
   staticDir,
   developmentOrigin,
   labStatus,
+  masternodeStatus,
   qrEncoder,
 }) {
   if (developmentOrigin && developmentOrigin !== "http://127.0.0.1:5173")
@@ -125,6 +126,12 @@ export function createMerchantHttpServer({
           );
         return json(res, 200, await labStatus());
       }
+      if (
+        req.method === "GET" &&
+        path === "/api/masternodes/status" &&
+        masternodeStatus
+      )
+        return json(res, 200, await masternodeStatus());
       if (req.method === "GET" && path === "/api/invoices")
         return json(res, 200, await service.listInvoices());
       if (req.method === "POST" && path === "/api/invoices")

@@ -7,6 +7,7 @@
 #include <chainparamsbase.h>
 #include <key_io.h>
 #include <pow.h>
+#include <spork.h>
 #include <test/util/setup_common.h>
 #include <util/message.h>
 #include <util/system.h>
@@ -57,6 +58,11 @@ BOOST_AUTO_TEST_CASE(pinned_chain_identity)
     BOOST_CHECK_EQUAL(consensus.nHighSubsidyBlocks, 1);
     BOOST_CHECK_EQUAL(consensus.nHighSubsidyFactor, 1);
     BOOST_CHECK_EQUAL(MESSAGE_MAGIC, "LAVE Signed Message:\n");
+    BOOST_CHECK(!params.IsLaveQuorumLab());
+    CSporkManager sporks;
+    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_17_QUORUM_DKG_ENABLED), 4070908800ULL);
+    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_2_INSTANTSEND_ENABLED), 4070908800ULL);
+    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_19_CHAINLOCKS_ENABLED), 4070908800ULL);
 }
 
 BOOST_AUTO_TEST_CASE(address_and_key_domains)
@@ -122,6 +128,54 @@ BOOST_AUTO_TEST_CASE(reject_other_networks_and_authorities)
     args.ForceSetArg("-highsubsidyblocks", "1");
     args.ForceSetArg("-highsubsidyfactor", "1");
     BOOST_CHECK_NO_THROW(RequireLaveLocalChain(args));
+}
+
+namespace {
+struct LaveQuorumTestingSetup : BasicTestingSetup {
+    LaveQuorumTestingSetup() : BasicTestingSetup(CBaseChainParams::DEVNET, {"-devnet=lave-quorum-v1", "-listen=0", "-listenonion=0"}) {}
+};
+} // namespace
+
+BOOST_FIXTURE_TEST_CASE(isolated_quorum_identity_and_activation, LaveQuorumTestingSetup)
+{
+    const auto& params = Params();
+    BOOST_CHECK(params.IsLaveQuorumLab());
+    BOOST_CHECK(params.IsMockableChain());
+    BOOST_CHECK(!params.RequireRoutableExternalIP());
+    BOOST_CHECK_EQUAL(params.GetConsensus().hashGenesisBlock.GetHex(), "3db65802980f975c71d3c4e095a0d45304b4e419a09fd2182aee54cb3eaed4de");
+    BOOST_CHECK_EQUAL(params.GetConsensus().hashDevnetGenesisBlock.GetHex(), "4d77c6b3447becea615bebe369a6771937d6d2722baf99060f9704f7b112a4e1");
+    BOOST_CHECK(CheckProofOfWork(params.GenesisBlock().GetHash(), params.GenesisBlock().nBits, params.GetConsensus()));
+    BOOST_CHECK(CheckProofOfWork(params.DevNetGenesisBlock().GetHash(), params.DevNetGenesisBlock().nBits, params.GetConsensus()));
+    BOOST_CHECK_EQUAL(BaseParams().DataDir(), "devnet-lave-quorum-v1");
+    BOOST_CHECK_EQUAL(BaseParams().RPCPort(), 19788);
+    BOOST_CHECK_EQUAL(params.GetDefaultPort(), 19789);
+    const CMessageHeader::MessageStartChars magic{0xfa, 0x4c, 0x51, 0xb9};
+    BOOST_CHECK_EQUAL_COLLECTIONS(params.MessageStart(), params.MessageStart() + 4, magic, magic + 4);
+    CSporkManager sporks;
+    for (const auto id : {SPORK_2_INSTANTSEND_ENABLED, SPORK_3_INSTANTSEND_BLOCK_FILTERING,
+                          SPORK_17_QUORUM_DKG_ENABLED, SPORK_19_CHAINLOCKS_ENABLED,
+                          SPORK_21_QUORUM_ALL_CONNECTED, SPORK_23_QUORUM_POSE}) {
+        BOOST_CHECK_EQUAL(sporks.GetSporkValue(id), 0);
+    }
+    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_9_SUPERBLOCKS_ENABLED), 4070908800ULL);
+    BOOST_CHECK(params.SporkAddresses().empty());
+    const auto cl = params.GetLLMQ(params.GetConsensus().llmqTypeChainLocks);
+    const auto is = params.GetLLMQ(params.GetConsensus().llmqTypeDIP0024InstantSend);
+    BOOST_REQUIRE(cl.has_value());
+    BOOST_REQUIRE(is.has_value());
+    BOOST_CHECK_EQUAL(cl->size, 3);
+    BOOST_CHECK_EQUAL(cl->threshold, 2);
+    BOOST_CHECK_EQUAL(is->size, 4);
+    BOOST_CHECK_EQUAL(is->threshold, 3);
+    BOOST_CHECK(is->useRotation);
+    BOOST_CHECK_EQUAL(is->signingActiveQuorumCount, 2);
+    CKey key;
+    key.MakeNewKey(true);
+    const auto address = EncodeDestination(PKHash(key.GetPubKey()));
+    BOOST_CHECK(IsValidDestinationString(address));
+    BOOST_CHECK(!IsValidDestinationString(WithPrefix(address, {48})));
+    BOOST_CHECK(!DecodeSecret(WithPrefix(EncodeSecret(key), {181})).IsValid());
+    BOOST_CHECK_NO_THROW(RequireLaveLocalChain(gArgs));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

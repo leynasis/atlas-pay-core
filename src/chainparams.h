@@ -151,6 +151,7 @@ public:
     const std::vector<std::string>& SporkAddresses() const { return vSporkAddresses; }
     int MinSporkKeys() const { return nMinSporkKeys; }
     int CreditPoolPeriodBlocks() const { return nCreditPoolPeriodBlocks; }
+    bool IsLaveQuorumLab() const { return m_is_lave_quorum_lab; }
     [[nodiscard]] std::optional<Consensus::LLMQParams> GetLLMQ(Consensus::LLMQType llmqType) const;
 
 protected:
@@ -173,6 +174,7 @@ protected:
     bool fRequireStandard;
     bool fRequireRoutableExternalIP;
     bool m_is_test_chain;
+    bool m_is_lave_quorum_lab{false};
     bool fAllowMultipleAddressesFromGroup;
     bool m_is_mockable_chain;
     int nLLMQConnectionRetryTimeout;

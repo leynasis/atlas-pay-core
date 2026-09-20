@@ -264,6 +264,22 @@ bool CSporkManager::IsSporkActive(SporkId nSporkID) const
 
 SporkValue CSporkManager::GetSporkValue(SporkId nSporkID) const
 {
+    // Fixed activation belongs only to the separately pinned local quorum lab.
+    // No private signing authority or override can affect the payment devnet.
+    if (Params().IsLaveQuorumLab()) {
+        switch (nSporkID) {
+        case SPORK_2_INSTANTSEND_ENABLED:
+        case SPORK_3_INSTANTSEND_BLOCK_FILTERING:
+        case SPORK_17_QUORUM_DKG_ENABLED:
+        case SPORK_19_CHAINLOCKS_ENABLED:
+        case SPORK_21_QUORUM_ALL_CONNECTED:
+        case SPORK_23_QUORUM_POSE:
+            return 0;
+        default:
+            break;
+        }
+    }
+
     // Harden all sporks on Mainnet
     if (!Params().IsTestChain()) {
         switch (nSporkID) {

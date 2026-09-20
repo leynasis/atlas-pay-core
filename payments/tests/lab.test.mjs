@@ -119,7 +119,8 @@ function connectionTransport(peerResult) {
     if (method === "getpeerinfo") {
       const count = reads.get(id) + 1;
       reads.set(id, count);
-      const target = NODES[NODE_IDS[(NODE_IDS.indexOf(id) + 1) % 3]];
+      const target =
+        NODES[NODE_IDS[(NODE_IDS.indexOf(id) + 1) % NODE_IDS.length]];
       const peers = [
         {
           addr: `127.0.0.1:${target.p2pPort}`,
@@ -151,12 +152,18 @@ test("connectLab waits for initial and final handshakes before declaring ready",
     return count === 2 ? [peers[1]] : peers;
   });
   await connectLab({ transport: fake.transport, timeout: 2000 });
-  assert.deepEqual([...fake.reads.values()], [4, 4, 4]);
-  assert.equal(fake.writes.length, 3);
+  assert.deepEqual(
+    [...fake.reads.values()],
+    NODE_IDS.map(() => 4),
+  );
+  assert.equal(fake.writes.length, NODE_IDS.length);
   for (let i = 0; i < NODE_IDS.length; i++) {
     assert.deepEqual(fake.writes[i], {
       id: NODE_IDS[i],
-      params: [`127.0.0.1:${NODES[NODE_IDS[(i + 1) % 3]].p2pPort}`, "onetry"],
+      params: [
+        `127.0.0.1:${NODES[NODE_IDS[(i + 1) % NODE_IDS.length]].p2pPort}`,
+        "onetry",
+      ],
       reads: 2,
     });
   }
@@ -199,11 +206,11 @@ test("dashboard transport rejects monetary methods before loading credentials", 
 test("node destinations and cookies are fixed and separate from legacy regtest", () => {
   assert.deepEqual(
     Object.values(NODES).map((node) => node.rpcPort),
-    [0, 1, 2].map((offset) => PROFILE_CONFIG.rpcBase + offset),
+    NODE_IDS.map((_, offset) => PROFILE_CONFIG.rpcBase + offset),
   );
   assert.equal(
     new Set(Object.values(NODES).map((node) => node.cookiePath)).size,
-    3,
+    NODE_IDS.length,
   );
   assert.throws(() => getNode("main"), /Unknown lab node/);
   assert.throws(() => getNode("__proto__"), /Unknown lab node/);

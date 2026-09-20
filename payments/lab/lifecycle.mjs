@@ -26,6 +26,8 @@ import {
   LAB_DIR,
   LAB_NAME,
   MINIMUM_DIFFICULTY_BLOCKS,
+  MINER_API_METHODS,
+  MINER_API_CREDENTIALS_PATH,
   MERCHANT_API_METHODS,
   MERCHANT_API_CREDENTIALS_PATH,
   NODE_IDS,
@@ -35,6 +37,7 @@ import {
 } from "./config.mjs";
 import { assertLabNode, inspectNode, rpc } from "./rpc.mjs";
 import { verifyLaveRuntime } from "./runtime.mjs";
+import { ensureCashier } from "./cashier.mjs";
 
 const exec = promisify(execFile);
 const fundingJournalPath = join(LAB_DIR, "funding.json");
@@ -111,6 +114,34 @@ async function prepareNode(nodeId) {
     merchantAuth.push(
       `rpcauth=${apiCredential.username}:${apiCredential.salt}$${apiDigest}`,
       `rpcwhitelist=${apiCredential.username}:${MERCHANT_API_METHODS.join(",")}`,
+    );
+  }
+  if (nodeId === "miner") {
+    await mkdir(join(LAB_DIR, "miner-api"), { recursive: true, mode: 0o700 });
+    let apiCredential;
+    try {
+      apiCredential = JSON.parse(
+        await readFile(MINER_API_CREDENTIALS_PATH, "utf8"),
+      );
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      apiCredential = {
+        username: `${PROFILE}_miner_api`,
+        password: randomBytes(32).toString("hex"),
+        salt: randomBytes(16).toString("hex"),
+      };
+      await writeFile(
+        MINER_API_CREDENTIALS_PATH,
+        JSON.stringify(apiCredential),
+        { mode: 0o600 },
+      );
+    }
+    const digest = createHmac("sha256", apiCredential.salt)
+      .update(apiCredential.password)
+      .digest("hex");
+    merchantAuth.push(
+      `rpcauth=${apiCredential.username}:${apiCredential.salt}$${digest}`,
+      `rpcwhitelist=${apiCredential.username}:${MINER_API_METHODS.join(",")}`,
     );
   }
   const config = [
@@ -286,6 +317,8 @@ async function ensureWallet(nodeId) {
     (wallet) => wallet.name === node.wallet,
   );
   await assertLabNode(nodeId);
+  if (!found && PROFILE === "lave" && ["merchant", "signer"].includes(nodeId))
+    return;
   await rpc(
     nodeId,
     found ? "loadwallet" : "createwallet",
@@ -333,6 +366,7 @@ export async function startLab() {
   await connectLab();
   await waitForSync();
   for (const id of NODE_IDS) await ensureWallet(id);
+  await ensureCashier();
   let journal = { operations: [] };
   try {
     journal = JSON.parse(await readFile(fundingJournalPath, "utf8"));
@@ -350,7 +384,11 @@ export async function startLab() {
     ["customer", "20"],
     ["merchant", "2"],
   ]) {
-    const balances = (await rpc(id, "getbalances", [], id)).mine;
+    const view = await rpc(id, "getbalances", [], NODES[id].wallet);
+    const balances =
+      id === "merchant" && PROFILE === "lave"
+        ? view.watchonly || view.mine
+        : view.mine;
     const trusted = parseAmount(String(balances.trusted), { allowZero: true });
     const pending = parseAmount(String(balances.untrusted_pending), {
       allowZero: true,
@@ -386,7 +424,7 @@ export async function startLab() {
       id,
       "getnewaddress",
       [`${PROFILE}-lab-startup-funds`],
-      id,
+      NODES[id].wallet,
     );
     await assertLabNode("miner");
     const operation = {

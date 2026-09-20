@@ -1,10 +1,9 @@
 import { setTimeout as delay } from "node:timers/promises";
-import { NETWORK_IDENTITY } from "../lab/config.mjs";
+import { NETWORK_IDENTITY, PROFILE } from "../lab/config.mjs";
 import {
   merchantReadRpc,
   inspectNode,
-  rpc as administrativeRpc,
-  assertLabNode,
+  minerDevelopmentRpc,
 } from "../lab/rpc.mjs";
 import { getLabStatus } from "../lab/status.mjs";
 import { AppError } from "../server/errors.mjs";
@@ -15,10 +14,25 @@ export function merchantContext() {
   return {
     identity: MERCHANT_IDENTITY,
     rpc: merchantReadRpc,
-    assertNetwork: () =>
-      inspectNode("merchant", (_node, method, params = []) =>
+    watchOnly: PROFILE === "lave",
+    assertNetwork: async () => {
+      const info = await inspectNode("merchant", (_node, method, params = []) =>
         merchantReadRpc(method, params),
-      ),
+      );
+      if (PROFILE === "lave") {
+        const wallet = await merchantReadRpc("getwalletinfo");
+        if (
+          wallet.private_keys_enabled !== false ||
+          wallet.descriptors !== true
+        )
+          throw new AppError(
+            "CUSTODY_MISMATCH",
+            "The cashier must use its verified watch-only descriptor wallet.",
+            503,
+          );
+      }
+      return info;
+    },
     mineDevelopment,
     labStatus: getLabStatus,
   };
@@ -27,11 +41,14 @@ export function merchantContext() {
 export async function mineDevelopment({ blocks, pendingTxids = [] }) {
   if (!Number.isInteger(blocks) || blocks < 1 || blocks > 10)
     throw new AppError("INVALID_BLOCKS", "Mine 1–10 local devnet blocks.");
-  // This isolated development helper can access only the miner's administrative
-  // transport. Invoice and wallet reads use separate restricted credentials.
-  const minerRpc = (method, params = [], wallet) =>
-    administrativeRpc("miner", method, params, wallet);
-  await assertLabNode("miner");
+  // Development mining gets a separate method-limited credential, never an
+  // administrator cookie. It cannot spend wallet funds or export keys.
+  const minerRpc = minerDevelopmentRpc;
+  const inspectMiner = () =>
+    inspectNode("miner", (_node, method, params = []) =>
+      minerRpc(method, params),
+    );
+  await inspectMiner();
   const deadline = Date.now() + 10_000;
   for (const txid of pendingTxids) {
     let ready = false;
@@ -67,14 +84,14 @@ export async function mineDevelopment({ blocks, pendingTxids = [] }) {
         409,
       );
   }
-  await assertLabNode("miner");
+  await inspectMiner();
   const address = await minerRpc(
     "getnewaddress",
     ["lavepay-devnet-ui-mining"],
     "miner",
   );
   await minerRpc("generatetoaddress", [blocks, address]);
-  const info = await assertLabNode("miner");
+  const info = await inspectMiner();
   const syncDeadline = Date.now() + 10_000;
   let synchronized = false;
   while (Date.now() < syncDeadline) {

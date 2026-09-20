@@ -1,4 +1,4 @@
-# LAVEPAY local network profiles — v0.4
+# LAVEPAY local network profiles — v0.5
 
 This is a developer-network specification, not mainnet economics. The default
 `lave` profile runs LAVE Core built from this repository. The explicit `atlas`
@@ -7,17 +7,17 @@ Authoritative constants are in [`lab/profiles.mjs`](../lab/profiles.mjs) and
 [`lab/config.mjs`](../lab/config.mjs); the native diff is described in
 [LAVE-CORE.md](../../docs/LAVE-CORE.md).
 
-| Property             | LAVE (default)               | Atlas (`LAVEPAY_NETWORK=atlas`)           |
-| -------------------- | ---------------------------- | ----------------------------------------- |
-| Currency             | Test LAVE                    | Test DASH                                 |
-| Network name         | `lave-local-v1`              | `atlas-local-v1`                          |
-| RPC chain            | `devnet-lave-local-v1`       | `devnet-atlas-local-v1`                   |
-| Runtime              | Locally compiled LAVE Core   | Official Dash Core 23.1.8, pinned SHA-256 |
-| RPC ports            | 20001, 20002, 20003          | 19901, 19902, 19903                       |
-| P2P ports            | 20011, 20012, 20013          | 19911, 19912, 19913                       |
-| State root           | `.runtime/lave/`             | Existing `.runtime/` subdirectories       |
-| Role wallets         | Miner, merchant, customer    | Existing miner, merchant, customer        |
-| Address/key encoding | Separate local LAVE prefixes | Original Dash test prefixes               |
+| Property             | LAVE (default)                                     | Atlas (`LAVEPAY_NETWORK=atlas`)           |
+| -------------------- | -------------------------------------------------- | ----------------------------------------- |
+| Currency             | Test LAVE                                          | Test DASH                                 |
+| Network name         | `lave-local-v1`                                    | `atlas-local-v1`                          |
+| RPC chain            | `devnet-lave-local-v1`                             | `devnet-atlas-local-v1`                   |
+| Runtime              | Locally compiled LAVE Core                         | Official Dash Core 23.1.8, pinned SHA-256 |
+| RPC ports            | 20001, 20002, 20003, 20004                         | 19901, 19902, 19903                       |
+| P2P ports            | 20011, 20012, 20013, 20014                         | 19911, 19912, 19913                       |
+| State root           | `.runtime/lave/`                                   | Existing `.runtime/` subdirectories       |
+| Role wallets         | Miner, watch-only cashier, customer, refund signer | Existing miner, merchant, customer        |
+| Address/key encoding | Separate local LAVE prefixes                       | Original Dash test prefixes               |
 
 Every listener is bound to `127.0.0.1`. The applications use HTTP ports
 4173/4174/4175 for either profile: stop them before changing profiles. Chain
@@ -42,17 +42,38 @@ inherited from Dash.
 
 ## Laboratory bootstrap
 
-There are three loopback processes, explicit local peer links, no DNS/fixed seed
-discovery, and no continuous mining service. Developer commands create blocks
+There are four LAVE loopback processes (three for Atlas), explicit local peer
+links, no DNS/fixed seed discovery, and no continuous mining service. Developer commands create blocks
 on demand. The first 10,000 blocks use easy mining. The height-one allowance is
 `highsubsidyblocks=1` with `highsubsidyfactor=1`; this permits the built-in
 50-unit devnet block without multiplying subsequent rewards. Its OP_RETURN
 output is unspendable. These are bootstrap conveniences, not a proposed public
 issuance policy. See [LAB.md](LAB.md).
 
-The lab does not configure masternodes, quorum finality, InstantSend or
-ChainLocks. A shared chain tip shows synchronization of local processes, not
-independent operators or economic security. Test coins have no monetary value.
+The payment lab does not configure masternodes, quorum finality, InstantSend or
+ChainLocks. A shared tip shows synchronization of local processes, not independent
+operators or economic security. Test coins have no monetary value.
+
+## v0.5 custody layout
+
+The merchant node on RPC20002 holds a descriptor wallet named `cashier` with
+`private_keys_enabled=false`. Its private merchant wallet is preserved on the
+separate `signer` node, RPC20004, for refund approval. Customer signing stays on
+RPC20003. This is a same-chain wallet migration: existing LAVE receiving
+addresses, invoice records and request identities remain unchanged. It does
+not alter either genesis or convert Atlas data. See [LAB.md](LAB.md).
+
+## Separate quorum laboratory
+
+[LAVE-Q](MASTERNODES.md) runs `devnet-lave-quorum-v1` with different genesis
+blocks, network bytes, ports and data in `.runtime/masternodes/`. It has nine
+local nodes: one controller and eight masternodes. Its RPC ports are 20101–20109
+and P2P ports 20111–20119. The payment profile selector remains exactly `lave`
+or `atlas`; LAVE-Q is managed through separate `mn:*` commands.
+
+LAVE-Q results are recorded against that chain's identity. Its balances are not
+LAVE payment balances, and successful quorum tests there do not enable
+InstantSend or ChainLocks for merchant invoices.
 
 ## Work required for a public network
 

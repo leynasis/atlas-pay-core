@@ -3,6 +3,7 @@ import { randomBytes, timingSafeEqual } from "node:crypto";
 import { readFile, realpath, stat } from "node:fs/promises";
 import { resolve, sep, extname } from "node:path";
 import { SignerError, requirePolicy } from "../signer/policy.mjs";
+import { exportBackupResponse } from "../backup/http.mjs";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -96,6 +97,7 @@ export function createWalletServer({
   service,
   role,
   staticDir,
+  journalPath,
   now = () => Date.now(),
 }) {
   requirePolicy(
@@ -205,6 +207,16 @@ export function createWalletServer({
             },
           });
         }
+      }
+      if (req.method === "POST" && path === "/api/wallet/backup") {
+        if (!journalPath)
+          fail("BACKUP_UNAVAILABLE", "Backup export is unavailable.", 503);
+        return await exportBackupResponse({
+          service,
+          journalPath,
+          body: await readJson(req),
+          response: res,
+        });
       }
       if (
         req.method === "POST" &&

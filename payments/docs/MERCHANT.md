@@ -1,10 +1,31 @@
 # Named-devnet merchant API
 
-The v0.4 merchant service listens on `127.0.0.1:4173` and serves `web/dist`, including `/pay/<invoice-id>`. It keeps a separate SQLite ledger in `.runtime/lave/merchant/invoices.sqlite` (default LAVE), or the preserved `.runtime/merchant/invoices.sqlite` under `LAVEPAY_NETWORK=atlas`. The original regtest service and its payer are a legacy demonstration with a separate database; their invoices are not imported into this named-devnet ledger.
+The v0.5 merchant service listens on `127.0.0.1:4173` and serves `web/dist`, including `/pay/<invoice-id>`. It keeps a separate SQLite ledger in `.runtime/lave/merchant/invoices.sqlite` (default LAVE), or the preserved `.runtime/merchant/invoices.sqlite` under `LAVEPAY_NETWORK=atlas`. The original regtest service and its payer are a legacy demonstration with a separate database; their invoices are not imported into this named-devnet ledger.
 
-The merchant service can create receiving addresses and inspect its wallet through a dedicated RPC credential. The daemon restricts that credential to an explicit list of address and read methods. It cannot sign, send, export keys, or access the customer wallet. Customer payment signing happens in the separate wallet service on port 4174; merchant refund signing happens in the separate wallet service on port 4175. No direct `/pay` or `/refund` spending endpoint exists on the merchant API.
+The default LAVE service uses the merchant node's `cashier` descriptor wallet,
+which has `private_keys_enabled=false`. Its dedicated RPC credential allows
+address allocation and necessary reads; it cannot sign, send, export private
+keys or administer Core. Existing LAVE receive addresses, invoice records and
+historical labels are preserved by the [watch-only migration](LAB.md). Atlas
+retains its previous private merchant wallet and method-restricted API.
 
-The optional development mining endpoint has a narrowly scoped code path to the miner node's administrative RPC. It never reads the merchant or customer administrative cookies; synchronization checks use dashboard read credentials. These services still share an operating-system user and filesystem permissions. The local UI has no merchant authentication or production custody isolation. It is intended only for the pinned local devnet and test coins.
+Customer payments are signed by the separate wallet service on 4174 through
+RPC20003. Refunds are signed by the wallet service on 4175 through the fourth
+node, `signer`, RPC20004, whose private wallet is named `merchant`. No direct
+`/pay` or `/refund` spending endpoint exists on the cashier API. Watch-only
+balances, incoming transactions and outgoing refund receipts are reconciled
+from the cashier's tracked scripts; it does not need a key to verify a receipt.
+
+Development mining uses `miner-api/credentials.json`, restricted to address
+allocation, block generation and necessary reads. It does not read any admin
+cookie. Dashboard credentials provide read-only synchronization checks.
+
+On macOS `npm start` and `npm run start:merchant` launch this service in a
+Seatbelt sandbox denying private wallet/admin files and HTTP access to 4174/4175.
+The signing services and host owner remain trusted. An explicit
+`LAVEPAY_ISOLATION=off` disables that boundary and is currently required on other
+operating systems. There is no merchant account authentication; this remains a
+loopback test-coin service. See [SECURITY.md](SECURITY.md).
 
 ## HTTP contract
 
@@ -13,7 +34,7 @@ All mutating requests require a JSON object with `Content-Type: application/json
 | Endpoint                                | Request / response                                                                                                                                         |
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/status`                       | Network identity, connection status, block height, merchant balance, separate wallet URLs and capabilities. There is no customer balance in this response. |
-| `GET /api/lab/status`                   | Read-only three-node topology and synchronization state.                                                                                                   |
+| `GET /api/lab/status`                   | Read-only selected topology and synchronization: four LAVE nodes or three Atlas nodes.                                                                     |
 | `GET /api/invoices`                     | `{ invoices: Invoice[] }`, newest first, refreshed from the merchant chain.                                                                                |
 | `POST /api/invoices`                    | `{ amount, merchantName, description, expiresInMinutes }` → `{ invoice }`. Amount is a decimal string, never a JSON number.                                |
 | `GET /api/invoices/:id`                 | `{ invoice }`, reconciled with the merchant wallet.                                                                                                        |
@@ -26,7 +47,7 @@ All mutating requests require a JSON object with `Content-Type: application/json
 
 Errors have the shape `{ error: { code, message } }`. The service reports unavailable or mismatched pinned chains without exposing RPC credentials or internal paths.
 
-`GET /api/status` returns the selected `profile`, `devnetName`, exact `network` chain name, `mode: "devnet"`, `connected`, nullable `blockHeight`, `currency: "LAVE"` or `"DASH"`, `balances: { merchant: "…" }`, and wallet URLs. `capabilities` contains `instantSend: false`, `chainLocks: false` and `serverCanSign: false`; these are application capabilities, not assertions about isolation from another process running as the same operating-system user.
+`GET /api/status` returns the selected `profile`, `devnetName`, exact `network` chain name, `mode: "devnet"`, `connected`, nullable `blockHeight`, `currency: "LAVE"` or `"DASH"`, `balances: { merchant: "…" }`, and wallet URLs. `capabilities` contains `watchOnly: true` for LAVE (`false` for legacy Atlas), `instantSend: false`, `chainLocks: false` and `serverCanSign: false`. These describe the selected payment service; separate LAVE-Q quorum results do not change them. The host owner and signing services remain trusted.
 
 ## Invoice and signer requests
 
@@ -56,7 +77,7 @@ This version supports one immutable, full refund request per invoice. It does no
 
 Creating a request does not move money and does not mark an invoice refunded. Its unique request ID is separate from the invoice ID. The merchant wallet on port 4175 imports and reviews that request, signs a PSBT only after merchant approval, broadcasts, then reports the resulting transaction ID with a stable receipt idempotency key.
 
-The API verifies that the merchant wallet knows a distinct outgoing transaction, with the exact requested destination and amount, a merchant-paid fee and only merchant-owned change outputs. It rejects an incoming payment reused as a refund, a transaction predating the request, a transaction already allocated to another invoice, conflicts, abandoned transactions and zero-confirmation transactions absent from the mempool. The transaction must be an ordinary payment in the selected Core network. A receipt retries safely; a conflicting transaction ID cannot replace a registered refund.
+The API verifies that its receiving wallet tracks a distinct outgoing transaction, with the exact requested destination and amount, a merchant-paid fee and only merchant-owned change outputs. It rejects an incoming payment reused as a refund, a transaction predating the request, a transaction already allocated to another invoice, conflicts, abandoned transactions and zero-confirmation transactions absent from the mempool. The transaction must be an ordinary payment in the selected Core network. A receipt retries safely; a conflicting transaction ID cannot replace a registered refund.
 
 One block confirmation makes the registered refund `refunded`; a reorganization can return it to `refund_pending`. Conflicts, missing transactions and unconfirmed refunds absent from the mempool require review. The original transaction ID remains fixed; normal status returns only when that same transaction reappears or confirms. New incoming funds after a refund request invalidate further request imports; funds arriving after broadcast are explicitly flagged and do not trigger a second refund. Expired or ambiguous requests require wallet/ledger inspection; this version has no automatic replacement or refund-request reset.
 
@@ -68,4 +89,4 @@ Receipt verification establishes that a matching real transaction exists. It is 
 
 P2P relay happens before block inclusion. With `invoiceId`, the mining endpoint briefly waits for the merchant to detect the payment and then waits up to ten seconds for its pending transaction IDs to reach the miner. If no payment is detected, it returns a clear error instead of implying an empty block confirmed the invoice. If the transaction is already confirmed, another block can still be mined. Global mining without an invoice simply produces blocks and does not promise to confirm a particular transaction.
 
-`node --test tests/merchant.test.mjs` verifies precise amounts, immutable requests, restart/idempotency, partial and late receipts, reorganization, refund request changes, forged/stale/reused receipts, restricted method usage, Host/Origin protection, checkout QR content and static containment. The complete three-service wallet and merchant flow is tested separately by the checkout integration suite.
+`node --test tests/merchant.test.mjs` verifies precise amounts, immutable requests, restart/idempotency, partial and late receipts, reorganization, refund request changes, forged/stale/reused receipts, restricted method usage, Host/Origin protection, checkout QR content and static containment. The complete three-service flow is tested by the checkout integration suite. `npm run test:cashier` checks real watch-only custody, migration replay and RPC restrictions; `npm run test:isolation` checks the macOS process boundary. Run live suites serially. Recorded v0.5 evidence is in [VALIDATION-V05.md](VALIDATION-V05.md).

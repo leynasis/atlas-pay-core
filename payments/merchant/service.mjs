@@ -96,6 +96,7 @@ export class MerchantService {
     store,
     now = () => Date.now(),
     mineDevelopment,
+    watchOnly = false,
   }) {
     this.rpc = rpc;
     this.assertNetwork = assertNetwork;
@@ -103,6 +104,7 @@ export class MerchantService {
     this.store = store;
     this.now = now;
     this.mineDevelopment = mineDevelopment;
+    this.watchOnly = watchOnly;
     this.queue = Promise.resolve();
   }
   exclusive(fn) {
@@ -152,6 +154,7 @@ export class MerchantService {
       devnetName: this.identity.devnetName,
       balances: { merchant: "0" },
       capabilities: {
+        watchOnly: this.watchOnly,
         instantSend: false,
         chainLocks: false,
         serverCanSign: false,
@@ -163,7 +166,12 @@ export class MerchantService {
     };
     try {
       const info = await this.checkNetwork();
-      const balance = await this.rpc("getbalance", ["*", 1, false, false]);
+      const balance = await this.rpc("getbalance", [
+        "*",
+        1,
+        false,
+        this.watchOnly,
+      ]);
       return {
         ...result,
         connected: true,
@@ -181,7 +189,7 @@ export class MerchantService {
       0,
       false,
       true,
-      false,
+      this.watchOnly,
       invoice.address,
     ]);
     const ids = [
@@ -196,7 +204,7 @@ export class MerchantService {
     let latest = null;
     const pendingTxids = [];
     for (const txid of ids) {
-      const tx = await this.rpc("gettransaction", [txid]);
+      const tx = await this.rpc("gettransaction", [txid, this.watchOnly]);
       if (
         tx.confirmations < 0 ||
         tx.abandoned ||
@@ -218,7 +226,10 @@ export class MerchantService {
     let refundIssue = false;
     if (invoice.refundTxid) {
       try {
-        const tx = await this.rpc("gettransaction", [invoice.refundTxid]);
+        const tx = await this.rpc("gettransaction", [
+          invoice.refundTxid,
+          this.watchOnly,
+        ]);
         refundIssue =
           tx.confirmations < 0 ||
           Boolean(tx.abandoned) ||
@@ -564,7 +575,7 @@ export class MerchantService {
           "The refund address is invalid for this devnet.",
         );
       const owner = await this.rpc("getaddressinfo", [body.address]);
-      if (owner.ismine)
+      if (owner.ismine || owner.iswatchonly)
         throw new AppError(
           "INVALID_REFUND_ADDRESS",
           "The refund destination must be outside the merchant wallet.",
@@ -689,7 +700,11 @@ export class MerchantService {
         );
       let tx;
       try {
-        tx = await this.rpc("gettransaction", [body.txid, false, true]);
+        tx = await this.rpc("gettransaction", [
+          body.txid,
+          this.watchOnly,
+          true,
+        ]);
       } catch (error) {
         if (error.code === -5 || error.rpcCode === -5)
           throw new AppError(
@@ -770,7 +785,13 @@ export class MerchantService {
           matches++;
         } else {
           const address = output.scriptPubKey.address;
-          if (!address || !(await this.rpc("getaddressinfo", [address])).ismine)
+          const owned = address
+            ? await this.rpc("getaddressinfo", [address])
+            : null;
+          if (
+            !owned ||
+            !(owned.ismine || (this.watchOnly && owned.iswatchonly))
+          )
             throw new AppError(
               "INVALID_REFUND_TRANSACTION",
               "Refund contains an unexpected non-merchant output.",

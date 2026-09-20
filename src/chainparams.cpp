@@ -507,7 +507,8 @@ class CDevNetParams : public CChainParams {
 public:
     // Parameter construction also runs before argument parsing to format help.
     // Executable entry points enforce the explicit network selection separately.
-    explicit CDevNetParams(const ArgsManager&) {
+    explicit CDevNetParams(const ArgsManager& args) {
+        m_is_lave_quorum_lab = args.GetArg("-devnet", "") == "lave-quorum-v1";
         strNetworkID = CBaseChainParams::DEVNET;
         consensus.nSubsidyHalvingInterval = 210240;
         consensus.nMasternodePaymentsStartBlock = 4010; // not true, but it's ok as long as it's less then nMasternodePaymentsIncreaseBlock
@@ -597,6 +598,25 @@ public:
         assert(consensus.hashDevnetGenesisBlock == uint256S("2043af4ec0030900338e8ad5eb86428008787d4be468f197d2bcd1776c094209"));
         assert(devnetGenesis.hashMerkleRoot == uint256S("d4abdb42f52681bab0d03e1935d139211284e65c6419afc7490560c1ffa07ac7"));
 
+        if (m_is_lave_quorum_lab) {
+            // Separate, explicitly selected masternode test chain. Never modify
+            // the existing payment chain's identity, quorum sizes or activation.
+            pchMessageStart[2] = 0x51;
+            nDefaultPort = 19789;
+            nDefaultPlatformP2PPort = 22180;
+            nDefaultPlatformHTTPPort = 22181;
+            genesis = CreateGenesisBlock(
+                "LAVEPAY 20/Sep/2026 isolated masternode lab - no monetary value",
+                CScript() << OP_RETURN, 1789862460, 5, 0x207fffff, 1, 50 * COIN);
+            consensus.hashGenesisBlock = genesis.GetHash();
+            assert(consensus.hashGenesisBlock == uint256S("3db65802980f975c71d3c4e095a0d45304b4e419a09fd2182aee54cb3eaed4de"));
+            assert(genesis.hashMerkleRoot == uint256S("ec398ca974762fe00c6a3aa2fa1cf50b47379217b9244ea3c7f7511911a419af"));
+            devnetGenesis = CreateDevNetGenesisBlock(genesis.GetHash(), "devnet-lave-quorum-v1", 1789862461, 0, 0x207fffff, 50 * COIN);
+            consensus.hashDevnetGenesisBlock = devnetGenesis.GetHash();
+            assert(consensus.hashDevnetGenesisBlock == uint256S("4d77c6b3447becea615bebe369a6771937d6d2722baf99060f9704f7b112a4e1"));
+            assert(devnetGenesis.hashMerkleRoot == uint256S("b06f8997a627a1a4e9bb22d22e2d8f67873b5181d47469ceb4a207afa6b91adc"));
+        }
+
         vFixedSeeds.clear();
         vSeeds.clear();
         // Local LAVE encodings deliberately reject Dash mainnet and testnet keys/addresses.
@@ -607,6 +627,14 @@ public:
         base58Prefixes[EXT_PUBLIC_KEY] = {0x02, 0x4c, 0x50, 0x55};
         base58Prefixes[EXT_SECRET_KEY] = {0x02, 0x4c, 0x50, 0x52};
         nExtCoinType = 1; // Standard test-network derivation, not an allocated mainnet coin type.
+
+        if (m_is_lave_quorum_lab) {
+            base58Prefixes[PUBKEY_ADDRESS] = {49};
+            base58Prefixes[SCRIPT_ADDRESS] = {64};
+            base58Prefixes[SECRET_KEY] = {182};
+            base58Prefixes[EXT_PUBLIC_KEY] = {0x02, 0x4c, 0x51, 0x55};
+            base58Prefixes[EXT_SECRET_KEY] = {0x02, 0x4c, 0x51, 0x52};
+        }
 
         // long living quorum params
         AddLLMQ(Consensus::LLMQType::LLMQ_50_60);
@@ -622,13 +650,24 @@ public:
         consensus.llmqTypePlatform = Consensus::LLMQType::LLMQ_DEVNET_PLATFORM;
         consensus.llmqTypeMnhf = Consensus::LLMQType::LLMQ_DEVNET;
 
+        if (m_is_lave_quorum_lab) {
+            consensus.llmqs.clear();
+            AddLLMQ(Consensus::LLMQType::LLMQ_TEST);
+            AddLLMQ(Consensus::LLMQType::LLMQ_TEST_DIP0024);
+            AddLLMQ(Consensus::LLMQType::LLMQ_TEST_PLATFORM);
+            consensus.llmqTypeChainLocks = Consensus::LLMQType::LLMQ_TEST;
+            consensus.llmqTypeDIP0024InstantSend = Consensus::LLMQType::LLMQ_TEST_DIP0024;
+            consensus.llmqTypePlatform = Consensus::LLMQType::LLMQ_TEST_PLATFORM;
+            consensus.llmqTypeMnhf = Consensus::LLMQType::LLMQ_TEST;
+        }
+
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
-        fRequireRoutableExternalIP = true;
+        fRequireRoutableExternalIP = !m_is_lave_quorum_lab;
         m_is_test_chain = true;
         fAllowMultipleAddressesFromGroup = true;
-        nLLMQConnectionRetryTimeout = 60;
-        m_is_mockable_chain = false;
+        nLLMQConnectionRetryTimeout = m_is_lave_quorum_lab ? 5 : 60;
+        m_is_mockable_chain = m_is_lave_quorum_lab;
 
         nPoolMinParticipants = 2;
         nPoolMaxParticipants = 20;

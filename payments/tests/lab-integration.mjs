@@ -65,14 +65,14 @@ const initialAtlas = PROFILE === "lave" ? await atlasStatus() : null;
 const before = await getLabStatus();
 await startLab();
 let status = await getLabStatus();
-assert.equal(status.onlineNodes, 3);
+assert.equal(status.onlineNodes, NODE_IDS.length);
 assert.equal(status.synchronized, true);
-if (before.onlineNodes === 3)
+if (before.onlineNodes === NODE_IDS.length)
   assert.equal(status.commonHeight, before.commonHeight);
 await startLab();
 assert.equal((await getLabStatus()).commonHeight, status.commonHeight);
 check(
-  "Three nodes agree; funded repeat startup generates no additional blocks",
+  "Configured nodes agree; funded repeat startup generates no additional blocks",
 );
 
 for (const id of NODE_IDS) {
@@ -80,8 +80,18 @@ for (const id of NODE_IDS) {
   assert.equal(info.chain, EXPECTED_CHAIN);
   assert.equal(info.genesisHash, GENESIS_HASH);
   assert.equal(info.devnetGenesisHash, DEVNET_GENESIS_HASH);
-  assert.equal(info.peers.length, 2);
-  assert.deepEqual(await rpc(id, "listwallets"), [id]);
+  assert.ok(info.peers.length >= 2);
+  const loaded = await rpc(id, "listwallets");
+  if (id === "miner") {
+    // The development miner also hosts explicitly separate application wallets
+    // (for example LAVEPAY MOVE). Never unload or remove them for this test.
+    assert(loaded.includes(NODES[id].wallet));
+    assert(
+      !loaded.includes("customer") &&
+        !loaded.includes("merchant") &&
+        !loaded.includes("cashier"),
+    );
+  } else assert.deepEqual(loaded, [NODES[id].wallet]);
 }
 const genesisBlock = await rpc("miner", "getblock", [DEVNET_GENESIS_HASH, 2]);
 assert.equal(
@@ -146,8 +156,14 @@ assert.equal(
   true,
 );
 assert.equal(
-  (await rpc("merchant", "getaddressinfo", [customerAddress], "merchant"))
-    .ismine,
+  (
+    await rpc(
+      "merchant",
+      "getaddressinfo",
+      [customerAddress],
+      NODES.merchant.wallet,
+    )
+  ).ismine,
   false,
 );
 assert.equal(
@@ -168,7 +184,7 @@ async function localMine(nodeId, count, allowInactive = false) {
     nodeId,
     "getnewaddress",
     ["lab-recovery-test"],
-    nodeId,
+    NODES[nodeId].wallet,
   );
   await assertLabNode(nodeId, { allowInactive });
   return rpc(nodeId, "generatetoaddress", [count, address]);
@@ -176,7 +192,7 @@ async function localMine(nodeId, count, allowInactive = false) {
 
 try {
   await stopNode("merchant");
-  assert.equal((await getLabStatus()).onlineNodes, 2);
+  assert.equal((await getLabStatus()).onlineNodes, NODE_IDS.length - 1);
   const hashes = await localMine("miner", 2);
   await waitUntil(
     async () => (await rpc("customer", "getbestblockhash")) === hashes.at(-1),
@@ -248,5 +264,5 @@ await writeFile(
   { mode: 0o600 },
 );
 console.log(
-  `${results.length} lab integration checks passed. All three nodes remain running.`,
+  `${results.length} lab integration checks passed. All configured nodes remain running.`,
 );

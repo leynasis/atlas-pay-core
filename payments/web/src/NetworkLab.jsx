@@ -1,3 +1,4 @@
+import MasternodeLab from "./MasternodeLab.jsx";
 import { currencyFor, profileFor } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -22,7 +23,7 @@ import {
 const copy = {
   en: {
     eyebrow: "LAVEPAY / NETWORK LAB",
-    title: "One local network.\nThree connected roles.",
+    title: "One local network.\nSeparate wallet roles.",
     subtitle:
       "Observe the independent devnet and compare each node’s view of the chain.",
     refresh: "Refresh network",
@@ -34,8 +35,8 @@ const copy = {
     retry: "Try again",
     local: "Local devnet",
     localBody:
-      "Three processes on this computer. Test coins only; this is not a public or decentralized production network.",
-    separate: "Three nodes, separate wallet approval",
+      "Separate processes on this computer. Test coins only; this is not a public or decentralized production network.",
+    separate: "Nodes with separate wallet approval",
     separateBody:
       "The merchant workspace and the customer and merchant wallets use this LAVEPAY devnet. Signing happens in the separate wallet services. The original regtest prototype remains a separate legacy environment.",
     nodeTitle: "Network nodes",
@@ -73,6 +74,7 @@ const copy = {
     miner: "Block producer",
     merchant: "Merchant",
     customer: "Customer wallet",
+    signer: "Merchant signer",
     copy: "Copy hash",
     copied: "Copied",
     copyError: "Copy failed. Select the hash to copy it manually.",
@@ -95,7 +97,7 @@ const copy = {
   },
   ru: {
     eyebrow: "LAVEPAY / ЛАБОРАТОРИЯ СЕТИ",
-    title: "Одна локальная сеть.\nТри связанные роли.",
+    title: "Одна локальная сеть.\nРаздельные кошельки.",
     subtitle:
       "Следите за отдельной devnet и сравнивайте состояние цепочки на каждом узле.",
     refresh: "Обновить сеть",
@@ -106,8 +108,8 @@ const copy = {
     retry: "Повторить",
     local: "Локальная devnet",
     localBody:
-      "Три процесса на этом компьютере. Только тестовые монеты; это не публичная и не децентрализованная рабочая сеть.",
-    separate: "Три узла и отдельное одобрение в кошельке",
+      "Отдельные процессы на этом компьютере. Только тестовые монеты; это не публичная и не децентрализованная рабочая сеть.",
+    separate: "Узлы и отдельное одобрение в кошельке",
     separateBody:
       "Кабинет продавца и отдельные кошельки покупателя и продавца работают в этой devnet LAVEPAY. Подписание выполняют сервисы кошельков. Прежний прототип regtest остаётся отдельной средой.",
     nodeTitle: "Узлы сети",
@@ -145,6 +147,7 @@ const copy = {
     miner: "Майнер",
     merchant: "Продавец",
     customer: "Кошелёк покупателя",
+    signer: "Подпись продавца",
     copy: "Копировать хеш",
     copied: "Скопировано",
     copyError: "Не удалось скопировать. Выделите хеш и скопируйте вручную.",
@@ -206,7 +209,9 @@ function HashField({ label, value, t }) {
 
 function NodeCard({ node, t, stale }) {
   const Icon =
-    { miner: Pickaxe, merchant: Store, customer: Wallet }[node.id] || Server;
+    { miner: Pickaxe, merchant: Store, customer: Wallet, signer: ShieldCheck }[
+      node.id
+    ] || Server;
   const label = t[node.id] || node.label || node.id;
   return (
     <article
@@ -575,6 +580,7 @@ export default function NetworkLab({ locale }) {
           </>
         )
       )}
+      <MasternodeLab locale={locale} />
       <div className="lab-separate">
         <GitBranch size={19} />
         <div>

@@ -5,6 +5,7 @@ import { MerchantStore } from "./store.mjs";
 import { MerchantService } from "./service.mjs";
 import { merchantContext } from "./runtime.mjs";
 import { createMerchantHttpServer } from "./http.mjs";
+import { getMasternodeStatus } from "../masternodes/status.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export function createMerchantApplication({
@@ -24,6 +25,7 @@ export function createMerchantApplication({
     developmentOrigin,
     qrEncoder,
     labStatus: context.labStatus,
+    masternodeStatus: getMasternodeStatus,
   });
   return {
     server,

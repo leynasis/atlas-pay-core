@@ -3863,3 +3863,212 @@ tbody tr:hover {
     font-size: 8px;
   }
 }
+
+/* Custody and quorum status share the existing payment workspace palette. */
+.wallet-backup {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line, #e1e4dc);
+}
+.wallet-backup h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+.wallet-backup > p,
+.wallet-backup details p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #697166;
+}
+.wallet-backup form {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0;
+}
+.wallet-backup label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.wallet-backup input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #d9dfd4;
+  background: #fff;
+  color: #253b24;
+  border-radius: 9px;
+  padding: 11px 12px;
+  font: inherit;
+  font-size: 13px;
+}
+.wallet-backup button {
+  margin-top: 6px;
+  width: 100%;
+  justify-content: center;
+}
+.wallet-backup summary,
+.quorum-lab summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: #34582e;
+}
+.backup-success {
+  padding: 10px;
+  background: #e9f1e2;
+  border-radius: 8px;
+}
+.quorum-lab {
+  margin: 34px 0;
+  border: 1px solid #dce2d4;
+  padding: 28px;
+  border-radius: 20px;
+  background: #f8faf5;
+}
+.quorum-lab .lab-section-heading {
+  align-items: center;
+  gap: 20px;
+}
+.quorum-lab .lab-section-heading p {
+  max-width: 690px;
+}
+.quorum-lab .eyebrow {
+  font-size: 10px;
+  margin-bottom: 8px;
+}
+.quorum-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 24px 0;
+}
+.quorum-metrics article {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid #e3e8dd;
+  border-radius: 13px;
+  padding: 20px;
+}
+.quorum-metrics article > svg {
+  color: #587943;
+}
+.quorum-metrics article > span {
+  font-size: 12px;
+  color: #697166;
+}
+.quorum-metrics strong {
+  font-size: 30px;
+  color: #293e25;
+}
+.quorum-metrics strong small {
+  font-size: 16px;
+  font-weight: 400;
+  color: #8c9587;
+}
+.quorum-metrics .quorum-proof {
+  font-size: 17px;
+  line-height: 1.5;
+}
+.quorum-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.quorum-detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.quorum-detail-grid span,
+.quorum-lock > span {
+  font-size: 12px;
+  color: #717a6c;
+}
+.quorum-lock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #edf2e7;
+  padding: 14px;
+  border-radius: 9px;
+  margin-bottom: 18px;
+}
+.quorum-lock code {
+  overflow-wrap: anywhere;
+  font-size: 11px;
+  color: #3b5431;
+}
+.quorum-note {
+  font-size: 13px;
+  color: #6a7364;
+  line-height: 1.6;
+}
+.quorum-node-list {
+  margin: 12px 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.quorum-node-list > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #fff;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.quorum-node-list small {
+  width: 100%;
+  color: #737b6d;
+}
+.quorum-node-list i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.online-dot {
+  background: #6c964b;
+}
+.offline-dot {
+  background: #abb2a7;
+}
+.quorum-footnote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+  font-size: 10px;
+  color: #7b8574;
+}
+.quorum-footnote > span:last-child {
+  margin-left: auto;
+}
+@media (max-width: 720px) {
+  .quorum-lab {
+    padding: 20px;
+  }
+  .quorum-metrics,
+  .quorum-detail-grid,
+  .quorum-node-list {
+    grid-template-columns: 1fr;
+  }
+  .quorum-metrics {
+    gap: 8px;
+  }
+  .quorum-metrics article {
+    padding: 16px;
+  }
+  .quorum-footnote > span:last-child {
+    margin-left: 0;
+  }
+}

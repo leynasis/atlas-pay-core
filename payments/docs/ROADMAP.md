@@ -1,55 +1,83 @@
 # LAVEPAY delivery roadmap
 
-This document separates implemented prototype scope from future work. No dates, transaction-rate claims or worldwide coverage are promised without evidence.
+This document separates implemented prototype scope from future work. No dates,
+transaction-rate claims or worldwide coverage are promised without evidence.
 
-## Milestone 1 — Local payments (this repository)
+## Implemented foundation — local payments and native chain
 
-- Isolated Dash regtest node, separate merchant and test payer wallets.
-- Persistent invoices, decimal-safe amounts, real payment addresses and QR checkout.
-- Actual test transactions, independently requested block confirmation, and explicit separate refund transactions.
-- Merchant dashboard and English/Russian interface.
-- Unit tests and an integration test that checks transaction IDs and on-chain wallet receipts.
+The original regtest prototype introduced persistent invoices, decimal-safe
+amounts, addresses, QR checkout, real test payments and separate refunds. The
+named-devnet application added independent wallet approval, PSBT review,
+immutable requests, durable broadcast retry and independently checked receipts.
 
-Completion criteria: reproduce invoice → payment → confirmation → refund with a fresh data directory; reject non-regtest execution; preserve state across restart. A single-node regtest does not demonstrate InstantSend, ChainLocks, decentralization, production throughput or adversarial resilience.
+Version 0.4 added source-built LAVE Core, separate `lave-local-v1` genesis blocks,
+P2P bytes and local address/key encodings, plus explicit currency binding. The
+Dash-backed Atlas profile retains its original chain, balances and request
+checksums. Name, domain and trademark availability remain unverified.
 
-## Milestone 2 — Independent network specification
+## Implemented in v0.5 — cashier and recovery boundaries
 
-Implemented toward this milestone: v0.4 adds source-built LAVE Core, a separate
-`lave-local-v1` development genesis, P2P bytes and local address/key encodings,
-three loopback nodes, profile-specific wallet/merchant state, and explicit LAVE
-currency binding. The existing Dash-backed Atlas profile remains selectable
-without changing its DASH balances or checksums. This is a local native-client
-milestone, not a public-chain launch or finalized mainnet parameter set.
+- Four LAVE payment nodes: miner, actual watch-only cashier, customer signer and separate merchant refund signer.
+- Restart-safe migration preserving original LAVE addresses, invoice ledger and private merchant wallet; public descriptors and labels remain at the cashier.
+- macOS Seatbelt confinement for the cashier, with method-restricted receiving, monitoring and development-mining credentials.
+- Password-encrypted Core-wallet and signing-journal exports, plus CLI extraction into a new directory with new signatures blocked.
+- A separate nine-node LAVE-Q lab with eight local masternodes, used to validate inherited quorum behavior independently of the payment chain.
 
-**LAVEPAY** is the payment system; **LAVE** is the new profile's valueless test
-unit. Name, domain and trademark availability have not been verified.
+The payment chain still has no active InstantSend or ChainLocks. See
+[MASTERNODES.md](MASTERNODES.md) for the separate experiment's exact evidence and
+[VALIDATION-V05.md](VALIDATION-V05.md) for v0.5 checks. Local processes under one
+host owner are not independent operators or customer-controlled custody.
 
-Decide intended payment market, threat model, sustainable operator budget and initial distribution. Specify network identifiers, genesis, seed bootstrap, address formats, replay isolation, difficulty rules, quorum formation and activation heights. Review all changes together: block-based schedules affect issuance and quorum timing.
+## Next payment milestone — authenticated use and deliberate recovery
 
-Maintain the source build recipe, exact upstream diff and recorded build provenance. Independently reproduce binaries and validate nodes against identical genesis/configuration. Test wallet/network separation and recovery. Recruit independent operators before claiming decentralization.
+Authenticate merchant accounts and wallet owners. Bind signed expiring invoices
+to verified merchant identities; the current request hash is only a checksum.
+Add scoped public read-only checkout capabilities, rate limits, replay-safe
+webhooks and audit records. Keep private invoice metadata out of public chain
+storage.
 
-## Milestone 3 — Non-custodial payment integration
+Move customer signing to trusted customer devices or a reviewed hardware-wallet
+integration. Isolate merchant signing beyond the cashier's macOS sandbox, and
+provide equivalent enforced deployment boundaries on supported platforms.
+Keep fresh signatures blocked for recovered snapshots until later payments,
+UTXOs and journal state have been reconciled through a reviewed recovery
+procedure. Back up merchant accounting and operator keys separately from the
+existing signing-wallet export.
 
-Implemented toward this milestone in v0.3: devnet merchant invoices, separate customer and merchant browser wallets with explicit PSBT review/approval, immutable payment/refund requests, durable broadcast recovery, unsigned cancellation and independently verified refund receipts. The CLI shares the customer signing journal. All processes remain on one local machine. Authenticated merchant requests, actual watch-only infrastructure, device isolation, wallet backup and public checkout are not complete.
+Acceptance requires an end-to-end payment/refund with authenticated principals,
+rejection of forged merchant requests and cross-account access, preserved exact
+transaction retries after interruption, and a documented recovery rehearsal
+that cannot silently create a second spend from an older snapshot.
 
-Use customer-controlled signing and merchant watch-only infrastructure. Design wallet backup/recovery and hardware signing integration. Add authenticated merchant accounts, public read-only invoice capabilities, signed expiring payment requests, webhooks with replay protection and idempotency, rate limits, audit records, and merchant-directed refunds. Keep private invoice metadata out of public chain storage.
+## Distributed testnet and operational evidence
 
-Choose whether Dash Platform identities and proofs justify operating the additional stack. Names and data contracts already exist upstream and should be integrated instead of advertised as newly invented features.
+The local lab covers block relay, restart/catch-up and partition/convergence.
+The LAVE-Q experiment adds actual local masternode and quorum testing, but uses
+a separate chain and one machine. Recruit independent operators and validate
+network diversity before calling either system a distributed public testnet.
 
-## Milestone 4 — Distributed testnet and operational evidence
+Finalize intended payment markets, threat model, issuance, sustainable operator
+budget and initial distribution. Review genesis, discovery, replay isolation,
+difficulty, quorum activation, governance authority and upgrade schedules
+together; block-based schedules affect issuance and quorum timing.
 
-Local evidence now covers real three-node block relay, restart/catch-up and a
-partition with competing branches followed by convergence. All nodes are on
-one machine; this does not meet the independently operated testnet milestone.
+Measure p50/p95/p99 acceptance latency, confirmed throughput, quorum availability,
+ChainLocks lag, mempool behavior, node cost and state growth. Exercise operator
+loss, partitions, conflicts, fees, reorganization, interrupted upgrades and
+restored backups. Compare equivalent hardware/load with stock Dash. Reproduce
+release binaries independently and commission review of consensus and custody
+changes. Mainnet requires published evidence, incident response, supported
+releases and an accountable launch decision.
 
-Measure p50/p95/p99 payment acceptance, actual confirmed throughput, quorum availability, ChainLocks lag, mempool behavior, full-node cost and state growth. Exercise network partitions, operator loss, conflicting transactions, insufficient fee, reorganization, overdue and overpaid invoices, interrupted upgrades and restored backups. Compare the same load and hardware with stock Dash.
+## International payment operations
 
-Commission independent review of modified consensus and custody/signing boundaries. Publish limitations, recovery procedures, monitoring and an incident response process. Mainnet requires these results, a supported release process and an accountable launch decision.
+Crypto settlement, fiat conversion and merchant payouts are separate
+capabilities. A new coin does not create liquidity or stable purchasing power.
+Identify initial markets, settlement assets, conversion partners, payout paths
+and responsibility for disputes. Validate market-specific requirements with
+appropriate partners before live rollout. No bank, conversion provider,
+stablecoin issuer or licensed payment service is integrated in this prototype.
 
-## Milestone 5 — International payment operations
-
-Crypto settlement, fiat conversion and merchant payouts are separate capabilities. A new coin does not automatically provide exchange liquidity or stable purchasing power. Identify initial markets, settlement assets, conversion partners, payout paths and responsibility for fraud/disputes. Validate applicable requirements per market with appropriate partners before live rollout. No conversion provider, bank, stablecoin issuer or licensed service is integrated in this prototype.
-
-## Decisions intentionally still open
-
-Name availability and registration; coin economics; distribution; public-chain launch; operator onboarding; market/jurisdiction scope; custody model; fiat and stable-value settlement partners. No user funds should depend on provisional choices.
+Name registration, public-chain economics, operator onboarding, market scope,
+production custody and settlement partnerships remain open decisions. No user
+funds should depend on provisional choices.
