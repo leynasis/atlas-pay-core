@@ -256,7 +256,7 @@ static CBLSPublicKey ParseBLSPubKey(const std::string& hexKey, const std::string
 
 template <typename SpecialTxPayload>
 static void FundSpecialTx(CWallet& wallet, CMutableTransaction& tx, const SpecialTxPayload& payload,
-                          const CTxDestination& fundDest) EXCLUSIVE_LOCKS_REQUIRED(!wallet.cs_wallet)
+                          const CTxDestination& fundDest, const bool sign = true) EXCLUSIVE_LOCKS_REQUIRED(!wallet.cs_wallet)
 {
     // Make sure the results are valid at least up to the most recent block
     // the user could have gotten from another RPC command prior to now
@@ -303,7 +303,7 @@ static void FundSpecialTx(CWallet& wallet, CMutableTransaction& tx, const Specia
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("No funds at specified address %s", EncodeDestination(fundDest)));
     }
 
-    auto res = CreateTransaction(wallet, vecSend, RANDOM_CHANGE_POSITION, coinControl, /*sign=*/true, tx.vExtraPayload.size());
+    auto res = CreateTransaction(wallet, vecSend, RANDOM_CHANGE_POSITION, coinControl, sign, tx.vExtraPayload.size());
     if (!res) {
         throw JSONRPCError(RPC_INTERNAL_ERROR, util::ErrorString(res).original);
     }
@@ -683,7 +683,7 @@ static UniValue protx_register_common_wrapper(const JSONRPCRequest& request,
     std::shared_ptr<CWallet> const pwallet = GetWalletForJSONRPCRequest(request);
     if (!pwallet) return UniValue::VNULL;
 
-    EnsureWalletIsUnlocked(*pwallet);
+    if (action != ProTxRegisterAction::Prepare) EnsureWalletIsUnlocked(*pwallet);
 
     size_t paramIdx = 0;
 
@@ -806,7 +806,7 @@ static UniValue protx_register_common_wrapper(const JSONRPCRequest& request,
             return false;
         }();
         try {
-            FundSpecialTx(*pwallet, tx, ptx, fundDest);
+            FundSpecialTx(*pwallet, tx, ptx, fundDest, /*sign=*/action != ProTxRegisterAction::Prepare);
             UpdateSpecialTxInputsHash(tx, ptx);
             Coin coin;
             if (!GetUTXOCoin(chainman.ActiveChainstate(), ptx.collateralOutpoint, coin)) {
@@ -863,15 +863,19 @@ static RPCHelpMan protx_register_submit()
 {
     return RPCHelpMan{"protx register_submit",
         "\nCombines the unsigned ProTx and a signature of the signMessage, signs all inputs\n"
-        "which were added to cover fees and submits the resulting transaction to the network.\n"
+        "which were added to cover fees and optionally submits the resulting transaction to the network.\n"
         "Note: See \"help protx register_prepare\" for more info about creating a ProTx and a message to sign.\n"
         + HELP_REQUIRING_PASSPHRASE,
         {
             {"tx", RPCArg::Type::STR_HEX, RPCArg::Optional::NO, "The serialized unsigned ProTx in hex format."},
             {"sig", RPCArg::Type::STR, RPCArg::Optional::NO, "The signature signed with the collateral key. Must be in base64 format."},
+            GetRpcArg("submit"),
         },
-        RPCResult{
-            RPCResult::Type::STR_HEX, "txid", "The transaction id"
+        {
+            RPCResult{"if \"submit\" is not set or set to true",
+                RPCResult::Type::STR_HEX, "txid", "The transaction id"},
+            RPCResult{"if \"submit\" is set to false",
+                RPCResult::Type::STR_HEX, "hex", "The serialized signed ProTx in hex format"},
         },
         RPCExamples{
             HelpExampleCli("protx", "register_submit \"tx\" \"sig\"")
@@ -912,7 +916,8 @@ static RPCHelpMan protx_register_submit()
     ptx.vchSig = opt_vchSig.value();
 
     SetTxPayload(tx, ptx);
-    return SignAndSendSpecialTx(request, chain_helper, chainman, tx, /*fSubmit=*/true);
+    const bool submit = request.params[2].isNull() || ParseBoolV(request.params[2], "submit");
+    return SignAndSendSpecialTx(request, chain_helper, chainman, tx, submit);
 },
     };
 }

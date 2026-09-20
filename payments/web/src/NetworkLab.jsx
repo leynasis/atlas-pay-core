@@ -1,4 +1,5 @@
 import MasternodeLab from "./MasternodeLab.jsx";
+import PaymentMasternodes from "./PaymentMasternodes.jsx";
 import { currencyFor, profileFor } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -82,6 +83,7 @@ const copy = {
     configuredBody:
       "Start the network with the lab CLI. This page will show the nodes when the service can read their configuration.",
     disabled: "Not enabled",
+    enabled: "Observed",
     noQuorums: "No masternode quorums",
     noQuorumsBody:
       "This lab does not provide quorum-backed finality. A shared tip is a synchronization observation, not an InstantSend or ChainLock guarantee.",
@@ -155,6 +157,7 @@ const copy = {
     configuredBody:
       "Запустите сеть через командную строку лаборатории. Узлы появятся здесь, когда сервис прочитает их конфигурацию.",
     disabled: "Не включено",
+    enabled: "Подтверждено",
     noQuorums: "Без кворумов мастернод",
     noQuorumsBody:
       "Лаборатория не обеспечивает финальность на основе кворумов. Общий последний блок означает синхронизацию, а не гарантию InstantSend или ChainLock.",
@@ -560,26 +563,57 @@ export default function NetworkLab({ locale }) {
                 <div className="lab-capability">
                   <span>InstantSend</span>
                   <strong>
-                    {data.capabilities?.instantSend === false
-                      ? t.disabled
-                      : t.unknown}
+                    {!current
+                      ? t.unknown
+                      : data.capabilities?.instantSend === true
+                        ? t.enabled
+                        : data.capabilities?.instantSend === false
+                          ? t.disabled
+                          : t.unknown}
                   </strong>
                 </div>
                 <div className="lab-capability">
                   <span>ChainLocks</span>
                   <strong>
-                    {data.capabilities?.chainLocks === false
-                      ? t.disabled
-                      : t.unknown}
+                    {!current
+                      ? t.unknown
+                      : data.capabilities?.chainLocks === true
+                        ? t.enabled
+                        : data.capabilities?.chainLocks === false
+                          ? t.disabled
+                          : t.unknown}
                   </strong>
                 </div>
-                <h4>{t.noQuorums}</h4>
-                <p>{t.noQuorumsBody}</p>
+                {data.capabilities?.instantSend !== true &&
+                data.capabilities?.chainLocks !== true ? (
+                  <>
+                    <h4>{t.noQuorums}</h4>
+                    <p>{t.noQuorumsBody}</p>
+                  </>
+                ) : (
+                  <>
+                    <h4>
+                      {locale === "ru"
+                        ? "Кворумы платёжной сети"
+                        : "Payment network quorums"}
+                    </h4>
+                    <p>
+                      {locale === "ru"
+                        ? "Возможности показаны по наблюдениям мастернод этой сети. Подтверждение конкретного платежа проверяется отдельно."
+                        : "Capabilities reflect observations from this network’s masternodes. Each payment’s confirmation is checked separately."}
+                    </p>
+                  </>
+                )}
               </section>
             </div>
           </>
         )
       )}
+      <PaymentMasternodes
+        locale={locale}
+        data={data?.paymentMasternodes}
+        current={current}
+      />
       <MasternodeLab locale={locale} />
       <div className="lab-separate">
         <GitBranch size={19} />

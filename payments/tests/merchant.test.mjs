@@ -242,6 +242,77 @@ test("Partial, paid, late and reorganized receipts are reconciled without changi
   assert.equal(original.id, invoice.id);
 });
 
+test("Reused invoice-address change is excluded while separate customer payments still count", async (t) => {
+  const { service, node, store } = setup(t);
+  const { invoice } = await service.createInvoice(
+    { ...input, amount: "0.05" },
+    randomUUID(),
+  );
+  const payment = node.receive(invoice.address, "0.05", 1);
+  const selfTransfer = node.receive(invoice.address, "0.04999522");
+  Object.assign(node.txs.get(selfTransfer), {
+    amount: "0",
+    fee: "-0.00000478",
+    details: [
+      {
+        category: "send",
+        address: invoice.address,
+        amount: "-0.04999522",
+        vout: 0,
+      },
+      {
+        category: "receive",
+        address: invoice.address,
+        amount: "0.04999522",
+        vout: 0,
+      },
+    ],
+  });
+  for (const confirmations of [0, 1]) {
+    node.txs.get(selfTransfer).confirmations = confirmations;
+    const view = (await service.getInvoice(invoice.id)).invoice;
+    assert.equal(view.status, "paid");
+    assert.equal(view.receivedAmount, "0.05");
+    assert.equal(view.confirmedAmount, "0.05");
+    assert.equal(view.overpaid, false);
+    assert.equal(view.paymentTxid, payment);
+    assert.equal(view.canRequestRefund, true);
+    assert.deepEqual(store.get(invoice.id)._pendingTxids, []);
+  }
+  const refund = await service.createRefundRequest(
+    invoice.id,
+    { address: destination },
+    randomUUID(),
+  );
+  assert.equal(refund.request.amount, "0.05");
+  const extra = node.receive(invoice.address, "0.01", 1);
+  const view = (await service.getInvoice(invoice.id)).invoice;
+  assert.equal(view.receivedAmount, "0.06");
+  assert.equal(view.confirmedAmount, "0.06");
+  assert.equal(view.overpaid, true);
+  assert.equal(view.paymentTxid, extra);
+  assert.equal(view.refundRequestStatus, "review");
+});
+
+test("Receipt exclusion requires the same wallet-send address and output index", async (t) => {
+  const { service, node } = setup(t);
+  const { invoice } = await service.createInvoice(
+    { ...input, amount: "0.05" },
+    randomUUID(),
+  );
+  const payment = node.receive(invoice.address, "0.05", 1);
+  node.txs.get(payment).details = [
+    { category: "send", address: destination, amount: "-0.1", vout: 0 },
+    { category: "send", address: invoice.address, amount: "-0.1", vout: 1 },
+    { category: "receive", address: invoice.address, amount: "0.05", vout: 0 },
+  ];
+  const view = (await service.getInvoice(invoice.id)).invoice;
+  assert.equal(view.status, "paid");
+  assert.equal(view.receivedAmount, "0.05");
+  assert.equal(view.confirmedAmount, "0.05");
+  assert.equal(view.overpaid, false);
+});
+
 test("Full refund requests require explicit external destination and confirmed receipts; new funds invalidate review", async (t) => {
   const { service, node } = setup(t);
   const { invoice } = await service.createInvoice(input, randomUUID());

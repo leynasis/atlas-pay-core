@@ -508,6 +508,7 @@ public:
     // Parameter construction also runs before argument parsing to format help.
     // Executable entry points enforce the explicit network selection separately.
     explicit CDevNetParams(const ArgsManager& args) {
+        m_is_lave_payment_devnet = args.GetArg("-devnet", "") == "lave-local-v1";
         m_is_lave_quorum_lab = args.GetArg("-devnet", "") == "lave-quorum-v1";
         strNetworkID = CBaseChainParams::DEVNET;
         consensus.nSubsidyHalvingInterval = 210240;
@@ -663,10 +664,10 @@ public:
 
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
-        fRequireRoutableExternalIP = !m_is_lave_quorum_lab;
+        fRequireRoutableExternalIP = !(m_is_lave_payment_devnet || m_is_lave_quorum_lab);
         m_is_test_chain = true;
         fAllowMultipleAddressesFromGroup = true;
-        nLLMQConnectionRetryTimeout = m_is_lave_quorum_lab ? 5 : 60;
+        nLLMQConnectionRetryTimeout = (m_is_lave_payment_devnet || m_is_lave_quorum_lab) ? 5 : 60;
         m_is_mockable_chain = m_is_lave_quorum_lab;
 
         nPoolMinParticipants = 2;

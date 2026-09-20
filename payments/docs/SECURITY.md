@@ -1,4 +1,4 @@
-# Prototype security boundaries — v0.5
+# Prototype security boundaries — v0.6
 
 This is a loopback development system with valueless test coins. HTTP and RPC
 services are not ready for internet exposure.
@@ -73,6 +73,15 @@ invoice database, all node data, or LAVE-Q operator keys.
 Payment-chain block confirmations are not InstantSend or ChainLocks. The
 separate [LAVE-Q lab](MASTERNODES.md) tests quorum behavior on another chain;
 its operator keys and local results do not secure merchant LAVE payments.
+
+The payment chain now has its own [wallet-managed masternodes](WALLET-MASTERNODES.md).
+Collateral reservation is a persistent wallet UTXO lock, not a cryptographic
+timelock. Normal payment/refund preparation restores and excludes collateral;
+retirement requires a separate approved self-spend. Stop never unlocks it.
+Operator secrets are included in the encrypted signing-journal backup and stay
+out of browser responses, public snapshots and command-line arguments.
+The cashier can read only the payment-masternode public directory; it cannot
+read seed or managed-node cookies/configuration or invoke their RPC services.
 
 LAVE Core has local build provenance, not an independently audited or
 reproducibly distributed release. Changed genesis, P2P bytes and address/key

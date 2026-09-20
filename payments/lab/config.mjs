@@ -96,6 +96,13 @@ export const NODES = Object.freeze(
   ),
 );
 export const NODE_IDS = Object.freeze(Object.keys(NODES));
+// Fixed loopback services belonging to this payment devnet. Never accept the
+// separate LAVE-Q laboratory ports or caller-supplied destinations.
+export const MASTERNODE_P2P_PORTS = Object.freeze(
+  PROFILE === "lave"
+    ? [20211, 20212, ...Array.from({ length: 16 }, (_, index) => 20401 + index)]
+    : [],
+);
 export function getNode(nodeId) {
   if (!Object.hasOwn(NODES, nodeId))
     throw new Error(`Unknown lab node: ${nodeId}`);

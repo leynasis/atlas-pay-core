@@ -97,6 +97,7 @@ export class MerchantService {
     now = () => Date.now(),
     mineDevelopment,
     watchOnly = false,
+    masternodeStatus,
   }) {
     this.rpc = rpc;
     this.assertNetwork = assertNetwork;
@@ -105,6 +106,7 @@ export class MerchantService {
     this.now = now;
     this.mineDevelopment = mineDevelopment;
     this.watchOnly = watchOnly;
+    this.masternodeStatus = masternodeStatus;
     this.queue = Promise.resolve();
   }
   exclusive(fn) {
@@ -172,11 +174,16 @@ export class MerchantService {
         false,
         this.watchOnly,
       ]);
+      const masternodes = await this.masternodeStatus?.();
       return {
         ...result,
         connected: true,
         blockHeight: info.blocks,
         balances: { merchant: formatAmount(rpcAmount(balance)) },
+        capabilities: {
+          ...result.capabilities,
+          ...(masternodes?.capabilities || {}),
+        },
       };
     } catch (error) {
       return { ...result, error: merchantError(error).message };
@@ -211,9 +218,26 @@ export class MerchantService {
         tx.details?.some((detail) => detail.abandoned)
       )
         continue;
+      // Core can report a self-transfer or reused-address change output as
+      // both send and receive. That output is not a new customer payment.
+      const sentVouts = new Set(
+        (tx.details || [])
+          .filter(
+            (detail) =>
+              detail.category === "send" &&
+              detail.address === invoice.address &&
+              Number.isSafeInteger(detail.vout) &&
+              detail.vout >= 0,
+          )
+          .map((detail) => detail.vout),
+      );
       let value = 0n;
       for (const detail of tx.details || [])
-        if (detail.address === invoice.address && detail.category === "receive")
+        if (
+          detail.address === invoice.address &&
+          detail.category === "receive" &&
+          !sentVouts.has(detail.vout)
+        )
           value += rpcAmount(detail.amount);
       if (value > 0n) {
         received += value;

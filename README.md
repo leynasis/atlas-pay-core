@@ -2,8 +2,9 @@
 
 A local payment system with merchant invoices, QR checkout, separate customer
 and merchant signing wallets, and independently checked payment/refund receipts.
-Version 0.5 adds a **watch-only cashier, a separate refund-signing node, encrypted
-wallet backups and macOS cashier confinement**. The default four-node
+Version 0.6 adds **wallet-managed masternodes, persistent 1000-LAVE collateral
+reservations and payment-network quorum bootstrap** to the watch-only cashier,
+separate signing wallets, encrypted backups and macOS confinement. The four base nodes of the
 `lave-local-v1` chain runs LAVE Core built from this repository's source. Its
 native test unit is **LAVE**. These coins have no monetary value; no public
 mainnet, live payment service or fiat conversion is launched.
@@ -36,14 +37,18 @@ wallets and chain data. Switching profiles does not convert or rename balances.
 - [Network profiles and identity](payments/docs/NETWORK-SPEC.md)
 - [Four-node payment laboratory and migration](payments/docs/LAB.md)
 - [Wallet approval, encrypted backups and recovery](payments/docs/WALLET.md)
+- [Launch and retire a masternode from your wallet](payments/docs/WALLET-MASTERNODES.md)
+- [Payment-network seed masternodes and quorum evidence](payments/docs/PAYMENT-MASTERNODES.md)
 - [Security boundaries](payments/docs/SECURITY.md)
 - [Separate LAVE-Q masternode laboratory](payments/docs/MASTERNODES.md)
+- [LAVEPAY 0.6 validation results](payments/docs/VALIDATION-V06.md)
 - [LAVEPAY 0.5 validation results](payments/docs/VALIDATION-V05.md)
 - [Delivery roadmap](payments/docs/ROADMAP.md)
 
-Payment-chain InstantSend and ChainLocks remain disabled. The separate LAVE-Q
-laboratory exercises masternodes and quorum behavior on a different chain;
-its results do not confer finality on LAVE payments. All local nodes still share
+Payment-chain capabilities are derived from its own observed quorum evidence.
+Invoice settlement still requires a block confirmation. The separate LAVE-Q
+laboratory exercises quorum behavior on another chain; its results do not confer
+finality on LAVE payments. All local nodes still share
 one host. Upstream source and license notices are retained below.
 
 ---

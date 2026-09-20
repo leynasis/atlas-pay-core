@@ -159,7 +159,7 @@ const words = {
     howTitle: "From request to receipt.",
     howSub: "A real local blockchain, a straightforward payment flow.",
     howNote:
-      "Confirmation here means at least one mined block. InstantSend and ChainLocks are not enabled in this local environment.",
+      "An invoice is confirmed after at least one mined block. The Network section shows observed InstantSend and ChainLocks capabilities; each payment is checked separately.",
     view: "View invoice",
     merchantAccount: "Merchant account",
     balanceNote: "Balances belong to the local regtest wallets.",
@@ -305,7 +305,7 @@ const words = {
     howTitle: "От счёта до поступления.",
     howSub: "Настоящий локальный блокчейн и понятный процесс оплаты.",
     howNote:
-      "Подтверждение здесь означает как минимум один созданный блок. InstantSend и ChainLocks в этой локальной среде не включены.",
+      "Счёт подтверждается после включения оплаты хотя бы в один блок. Наблюдения InstantSend и ChainLocks показаны в разделе «Сеть»; каждый платёж проверяется отдельно.",
     view: "Открыть счёт",
     merchantAccount: "Аккаунт продавца",
     balanceNote: "Балансы локальных кошельков regtest.",

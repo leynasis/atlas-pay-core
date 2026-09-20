@@ -1,6 +1,6 @@
-# LAVE Core local development chains — v0.5
+# LAVE Core local development chains — v0.6
 
-The LAVEPAY v0.5 runtime is a source-built LAVE Core development fork of Dash Core 23.1.8. The
+The LAVEPAY v0.6 runtime is a source-built LAVE Core development fork of Dash Core 23.1.8. The
 native version remains 23.1.8 so upstream protocol compatibility is explicit;
 the client user agent is `LAVE Core`. Copyright and license notices are retained.
 This is a local test currency with no monetary value. It is not a public testnet
@@ -66,12 +66,14 @@ initial minimum-difficulty window.
 
 Altered subsidy/difficulty values and quorum/spacing overrides are rejected.
 There are no DNS seeds, fixed peers, inherited spork signing addresses or local
-spork private keys. A spork manager with no authorized keys rejects updates and
-keeps upstream default spork values. `-sporkaddr`, `-sporkkey` and
-`-minsporkkeys` overrides are rejected. The payment profile has no provisioned
-masternode quorums: its InstantSend and ChainLocks capabilities remain false,
-and Platform is not deployed. The separate quorum profile below has its own
-pinned experiment parameters and evidence.
+spork private keys. Signed updates and `-sporkaddr`, `-sporkkey` and
+`-minsporkkeys` overrides are rejected. Both explicitly named local profiles
+fix sporks 2, 3, 17, 19, 21 and 23 active; superblocks stay disabled. The payment
+profile preserves its 12-member ChainLocks and 8-member rotated InstantSend
+parameters and real non-mockable clock. Loopback services and five-second quorum
+connection retries support local operators. Upgrade all payment nodes together.
+Wallet-managed collateral and the sixteen-node seed bootstrap are documented in
+[WALLET-MASTERNODES.md](../payments/docs/WALLET-MASTERNODES.md). Platform is not deployed.
 
 Public peer discovery, inbound listening and onion listening default off in the
 daemon. The application lab explicitly enables only its configured loopback

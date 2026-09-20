@@ -33,6 +33,7 @@ export function cashierProfile({
     join(LAB_DIR, "merchant-api"),
     join(LAB_DIR, "miner-api"),
     join(root, ".runtime/masternodes/public"),
+    join(root, ".runtime/lave/payment-masternodes/public"),
     ...extraRead,
   ];
   return `(version 1)

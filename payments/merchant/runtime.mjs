@@ -6,6 +6,7 @@ import {
   minerDevelopmentRpc,
 } from "../lab/rpc.mjs";
 import { getLabStatus } from "../lab/status.mjs";
+import { getPaymentMasternodeStatus } from "../lab/payment-masternodes.mjs";
 import { AppError } from "../server/errors.mjs";
 
 export const MERCHANT_IDENTITY = NETWORK_IDENTITY;
@@ -35,54 +36,93 @@ export function merchantContext() {
     },
     mineDevelopment,
     labStatus: getLabStatus,
+    masternodeStatus: getPaymentMasternodeStatus,
   };
 }
 
-export async function mineDevelopment({ blocks, pendingTxids = [] }) {
+export async function mineDevelopment(
+  { blocks, pendingTxids = [] },
+  {
+    minerRpc = minerDevelopmentRpc,
+    merchantRpc = merchantReadRpc,
+    labStatus = getLabStatus,
+    profile = PROFILE,
+    now = Date.now,
+    sleep = delay,
+    waitMs = 10_000,
+  } = {},
+) {
   if (!Number.isInteger(blocks) || blocks < 1 || blocks > 10)
     throw new AppError("INVALID_BLOCKS", "Mine 1–10 local devnet blocks.");
   // Development mining gets a separate method-limited credential, never an
   // administrator cookie. It cannot spend wallet funds or export keys.
-  const minerRpc = minerDevelopmentRpc;
   const inspectMiner = () =>
     inspectNode("miner", (_node, method, params = []) =>
       minerRpc(method, params),
     );
+  const isConfirmed = async (txid) => {
+    try {
+      return (
+        (await merchantRpc("gettransaction", [txid, profile === "lave"]))
+          .confirmations >= 1
+      );
+    } catch (error) {
+      if (error.code === -5 || error.rpcCode === -5) return false;
+      throw new AppError(
+        "MERCHANT_UNAVAILABLE",
+        "The merchant cannot verify the payment confirmation. Try again when its local node is available.",
+        503,
+      );
+    }
+  };
   await inspectMiner();
-  const deadline = Date.now() + 10_000;
+  const deadline = now() + waitMs;
   for (const txid of pendingTxids) {
     let ready = false;
-    while (Date.now() < deadline) {
+    let relayed = false;
+    while (now() < deadline) {
       try {
-        await minerRpc("getmempoolentry", [txid]);
-        ready = true;
-        break;
+        const entry = await minerRpc("getmempoolentry", [txid]);
+        relayed = true;
+        // Core returns string booleans here. A fresh unlocked LAVE payment
+        // may be excluded from a block despite being present in the mempool.
+        const locked =
+          entry.instantlock === "true" || entry.instantlock === true;
+        const oldEnough =
+          Number.isSafeInteger(entry.time) &&
+          entry.time >= 0 &&
+          Math.floor(now() / 1000) - entry.time >= 600;
+        if (profile !== "lave" || locked || oldEnough) {
+          ready = true;
+          break;
+        }
       } catch (error) {
-        if (error.code !== -5)
+        if (error.code !== -5 && error.rpcCode !== -5)
           throw new AppError(
             "MINER_UNAVAILABLE",
             "The local miner is unavailable.",
             503,
           );
       }
-      try {
-        if (
-          (await merchantReadRpc("gettransaction", [txid])).confirmations >= 1
-        ) {
-          ready = true;
-          break;
-        }
-      } catch {
-        /* bounded relay wait */
+      if (await isConfirmed(txid)) {
+        ready = true;
+        break;
       }
-      await delay(100);
+      await sleep(100);
     }
-    if (!ready)
+    if (!ready) {
+      if (relayed && profile === "lave")
+        throw new AppError(
+          "PAYMENT_NOT_MINEABLE",
+          "The payment reached the miner but is still waiting for InstantSend or the 10-minute mining safety delay. No block was mined. Wait and try confirming again.",
+          409,
+        );
       throw new AppError(
         "RELAY_TIMEOUT",
         "The pending transaction has not reached the miner. Wait for local P2P relay and try confirming again.",
         409,
       );
+    }
   }
   await inspectMiner();
   const address = await minerRpc(
@@ -92,16 +132,28 @@ export async function mineDevelopment({ blocks, pendingTxids = [] }) {
   );
   await minerRpc("generatetoaddress", [blocks, address]);
   const info = await inspectMiner();
-  const syncDeadline = Date.now() + 10_000;
+  const syncDeadline = now() + waitMs;
   let synchronized = false;
-  while (Date.now() < syncDeadline) {
-    const status = await getLabStatus();
-    if (status.synchronized && status.commonHeight >= info.blocks) {
-      synchronized = true;
-      break;
+  let paymentsConfirmed = pendingTxids.length === 0;
+  while (now() < syncDeadline) {
+    const status = await labStatus();
+    synchronized = status.synchronized && status.commonHeight >= info.blocks;
+    if (synchronized) {
+      // Mempool age only permits an attempt: Core's mining safety age is
+      // tracked separately. Never infer inclusion from a newly mined block.
+      paymentsConfirmed = (
+        await Promise.all(pendingTxids.map(isConfirmed))
+      ).every(Boolean);
+      if (paymentsConfirmed) break;
     }
-    await delay(100);
+    await sleep(100);
   }
+  if (pendingTxids.length && (!synchronized || !paymentsConfirmed))
+    throw new AppError(
+      "PAYMENT_NOT_CONFIRMED",
+      "A local block was mined, but the payment is not yet confirmed across the payment nodes. Wait for synchronization or InstantSend and try confirming again.",
+      409,
+    );
   return {
     blockHeight: info.blocks,
     synchronized,

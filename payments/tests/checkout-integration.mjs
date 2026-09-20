@@ -48,7 +48,10 @@ async function api(
   } catch {
     data = text;
   }
-  assert.equal(response.status, expected, `${path}: ${JSON.stringify(data)}`);
+  assert.ok(
+    (Array.isArray(expected) ? expected : [expected]).includes(response.status),
+    `${path}: HTTP ${response.status}: ${JSON.stringify(data)}`,
+  );
   assert.equal(response.headers.get("access-control-allow-origin"), null);
   return { data, response };
 }
@@ -73,6 +76,23 @@ async function until(callback, message) {
 }
 const invoice = async (id) =>
   (await api(merchant, `/api/invoices/${id}`)).data.invoice;
+async function mineInvoice(id) {
+  const deadline = Date.now() + 90_000;
+  while (Date.now() < deadline) {
+    const result = await api(merchant, "/api/dev/mine", {
+      body: { blocks: 1, invoiceId: id },
+      expected: [200, 409],
+    });
+    if (result.response.status === 200) return result;
+    // This explicit retryable response guarantees that no block was mined.
+    // Do not retry arbitrary conflicts or hide a failed post-mine receipt check.
+    assert.equal(result.data.error?.code, "PAYMENT_NOT_MINEABLE");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(
+    "InstantSend did not make the invoice eligible within 90 seconds.",
+  );
+}
 const create = async (amount, description) =>
   (
     await api(merchant, "/api/invoices", {
@@ -284,9 +304,7 @@ assert.ok(
   parseAmount(pendingWallet.pendingBalance, { allowZero: true }) >=
     parseAmount(draft.changeAmount, { allowZero: true }),
 );
-await api(merchant, "/api/dev/mine", {
-  body: { blocks: 1, invoiceId: created.id },
-});
+await mineInvoice(created.id);
 const paid = await invoice(created.id);
 assert.equal(paid.status, "paid");
 assert.equal(paid.confirmedAmount, "0.125");
@@ -378,9 +396,7 @@ await until(async () => {
   });
   return (await invoice(created.id)).status === "refund_pending";
 }, "Refund receipt did not synchronize");
-await api(merchant, "/api/dev/mine", {
-  body: { blocks: 1, invoiceId: created.id },
-});
+await mineInvoice(created.id);
 const refunded = await invoice(created.id);
 assert.equal(refunded.status, "refunded");
 assert.equal(refunded.refundTxid, sentRefund.txid);
@@ -466,9 +482,7 @@ assert.equal(
   null,
 );
 await request(customer, "cancel", { requestId: partialDraft.id }, payer);
-await api(merchant, "/api/dev/mine", {
-  body: { blocks: 1, invoiceId: partialInvoice.id },
-});
+await mineInvoice(partialInvoice.id);
 check(
   "Fresh invoice check refuses a stale full payment after an external partial receipt",
 );

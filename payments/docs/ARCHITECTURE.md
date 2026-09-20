@@ -1,4 +1,4 @@
-# Local development architecture — v0.5
+# Local development architecture — v0.6
 
 The default `lave` profile runs four source-built LAVE Core nodes on the pinned
 `lave-local-v1` payment chain. `LAVEPAY_NETWORK=atlas` selects the preserved
@@ -103,5 +103,7 @@ original identity. See [NETWORK-SPEC.md](NETWORK-SPEC.md).
 
 The separate [LAVE-Q laboratory](MASTERNODES.md) has nine local nodes and a
 different chain. Its public status is read-only in the cashier. Payment LAVE
-still uses block confirmations without InstantSend or ChainLocks. Neither lab
+has its own [wallet-managed masternodes and seed quorums](WALLET-MASTERNODES.md).
+Invoice settlement still requires block confirmations; network capability flags
+require fresh payment-chain monitor evidence. Neither lab
 demonstrates independent operators merely by running multiple local processes.

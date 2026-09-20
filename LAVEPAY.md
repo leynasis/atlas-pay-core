@@ -1,9 +1,12 @@
 # LAVEPAY — local LAVE payment development
 
 **LAVEPAY** is the payment system. **LAVE** is the native test unit of its local
-`lave-local-v1` chain. Version 0.5 runs four source-built LAVE Core nodes: miner,
+`lave-local-v1` chain. Version 0.6 keeps four source-built LAVE Core base nodes: miner,
 watch-only cashier, customer signer and merchant refund signer. Existing LAVE
 invoice addresses and history survive the migration to the watch-only cashier.
+Wallets additionally manage a local masternode with reviewed collateral and
+registration transactions, persistent reservations and explicit retirement.
+Sixteen local seed masternodes bootstrap this payment chain's retained quorums.
 
 This is a development prototype with valueless test coins. It is not a public
 mainnet, global payment service, production custody system, or finalized currency
@@ -29,7 +32,8 @@ regtest API remains a third, separate legacy experiment on port 4180.
 The [LAVE-Q laboratory](payments/docs/MASTERNODES.md) uses a different named
 chain, genesis, ports and state, with one controller and eight masternodes.
 It is not a selectable payment profile and its valueless LAVE-Q units are not
-LAVE payment balances. Payment-chain InstantSend and ChainLocks remain false.
+LAVE payment balances. Payment-chain capability flags now come from its own
+fresh [quorum evidence](payments/docs/PAYMENT-MASTERNODES.md).
 
 ## Start here
 

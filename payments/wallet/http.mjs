@@ -95,6 +95,7 @@ async function staticResponse(req, res, dir, path) {
 }
 export function createWalletServer({
   service,
+  staking,
   role,
   staticDir,
   journalPath,
@@ -106,6 +107,20 @@ export function createWalletServer({
     "Unknown wallet role.",
   );
   const sessions = new Map();
+  let operationQueue = Promise.resolve();
+  let queuedOperations = 0;
+  function perform(operation) {
+    if (queuedOperations >= 32)
+      fail(
+        "WALLET_BUSY",
+        "The wallet is busy. Retry after the current operation.",
+        503,
+      );
+    queuedOperations++;
+    const result = operationQueue.then(operation);
+    operationQueue = result.catch(() => {});
+    return result.finally(() => queuedOperations--);
+  }
   const cookieName = `${service.signer.identity.currency === "LAVE" ? "lave" : "atlas"}_${role}_wallet_session`;
   function session(req, res, create = false) {
     const token = (req.headers.cookie || "")
@@ -184,7 +199,7 @@ export function createWalletServer({
         const current = session(req, res, true);
         try {
           return json(res, 200, {
-            ...(await service.status()),
+            ...(await perform(() => service.status())),
             csrfToken: current.csrfToken,
           });
         } catch {
@@ -211,12 +226,45 @@ export function createWalletServer({
       if (req.method === "POST" && path === "/api/wallet/backup") {
         if (!journalPath)
           fail("BACKUP_UNAVAILABLE", "Backup export is unavailable.", 503);
-        return await exportBackupResponse({
-          service,
-          journalPath,
-          body: await readJson(req),
-          response: res,
-        });
+        const body = await readJson(req);
+        return await perform(() =>
+          exportBackupResponse({
+            service,
+            journalPath,
+            body,
+            response: res,
+          }),
+        );
+      }
+      if (path.startsWith("/api/wallet/masternodes")) {
+        if (!staking)
+          fail(
+            "STAKING_UNAVAILABLE",
+            "Masternode management is unavailable for this wallet.",
+            503,
+          );
+        if (req.method === "GET" && path === "/api/wallet/masternodes")
+          return json(res, 200, await perform(() => staking.status()));
+        const actions = {
+          "/api/wallet/masternodes/prepare": "prepare",
+          "/api/wallet/masternodes/approve": "approve",
+          "/api/wallet/masternodes/cancel": "cancel",
+          "/api/wallet/masternodes/start": "start",
+          "/api/wallet/masternodes/stop": "stop",
+          "/api/wallet/masternodes/retire-prepare": "retirePrepare",
+          "/api/wallet/masternodes/retire-approve": "retireApprove",
+        };
+        if (req.method === "POST" && Object.hasOwn(actions, path)) {
+          const action = actions[path];
+          const body = await readJson(req);
+          const result = await perform(() => staking[action](body));
+          return json(
+            res,
+            200,
+            ["start", "stop"].includes(action) ? result : { review: result },
+          );
+        }
+        fail("NOT_FOUND", "Not found.", 404);
       }
       if (
         req.method === "POST" &&
@@ -227,11 +275,16 @@ export function createWalletServer({
         ].includes(path)
       ) {
         const action = path.split("/").at(-1);
-        return json(res, 200, await service[action](await readJson(req)));
+        const body = await readJson(req);
+        return json(res, 200, await perform(() => service[action](body)));
       }
       const match = /^\/api\/wallet\/requests\/([0-9a-f-]{36})$/.exec(path);
       if (req.method === "GET" && match)
-        return json(res, 200, await service.getRequest(match[1]));
+        return json(
+          res,
+          200,
+          await perform(() => service.getRequest(match[1])),
+        );
       if (path.startsWith("/api/")) fail("NOT_FOUND", "Not found.", 404);
       if (req.method === "GET" || req.method === "HEAD")
         return await staticResponse(req, res, staticDir, path);

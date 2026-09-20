@@ -10,6 +10,7 @@ import {
   NODES,
 } from "./config.mjs";
 import { inspectNode, readOnlyRpc } from "./rpc.mjs";
+import { getPaymentMasternodeStatus } from "./payment-masternodes.mjs";
 
 export async function getLabStatus() {
   let configured = true;
@@ -72,6 +73,7 @@ export async function getLabStatus() {
         node.bestBlockHash === online[0].bestBlockHash &&
         node.height === online[0].height,
     );
+  const paymentMasternodes = await getPaymentMasternodeStatus();
   return {
     name: LAB_NAME,
     profile: PROFILE,
@@ -87,7 +89,10 @@ export async function getLabStatus() {
     commonTip: synchronized ? online[0].bestBlockHash : null,
     genesisHash: GENESIS_HASH,
     devnetGenesisHash: DEVNET_GENESIS_HASH,
-    capabilities: { instantSend: false, chainLocks: false },
+    capabilities: synchronized
+      ? paymentMasternodes.capabilities
+      : { instantSend: false, chainLocks: false },
+    paymentMasternodes,
     nodes,
   };
 }

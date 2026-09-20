@@ -301,11 +301,15 @@ test("wallet balance keeps unconfirmed own change visible and moves it to confir
       }
       if (method === "getaddressinfo")
         return { ismine: true, iswatchonly: false };
+      if (method === "listunspent")
+        return [{ amount: "0.1", spendable: true, safe: true }];
       assert.equal(method, "getbalances");
       return { mine: { trusted, untrusted_pending: external, immature: "50" } };
     };
     const pending = await f.service.status();
     assert.equal(pending.balance, "0.12500001");
+    assert.equal(pending.availableBalance, "0.1");
+    assert.equal(pending.lockedBalance, "0.02500001");
     assert.equal(pending.pendingBalance, "19.19998876");
     confirmed = "19.32498877";
     trusted = confirmed;
@@ -370,6 +374,8 @@ test("A copied journal or replaced wallet cannot advertise an unowned receiving 
   let owned = false;
   f.signer.rpc = async (_role, method, params) => {
     if (method === "getbalance") return "1";
+    if (method === "listunspent")
+      return [{ amount: "1", spendable: true, safe: true }];
     if (method === "getbalances")
       return { mine: { trusted: "1", untrusted_pending: "0" } };
     assert.equal(method, "getaddressinfo");

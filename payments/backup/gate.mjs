@@ -78,8 +78,8 @@ function protect(target, methods, journalPath, check) {
   for (const method of methods) {
     const original = target[method].bind(target);
     target[method] = (...args) =>
-      withWalletGate(journalPath, () => {
-        check?.(method, args);
+      withWalletGate(journalPath, async () => {
+        await check?.(method, args);
         return original(...args);
       });
   }
@@ -92,7 +92,16 @@ export function protectSigner(signer, journalPath) {
     signer,
     ["prepare", "approve", "cancel"],
     journalPath,
-    (method, args) => requireRecoverySafe(signer, method, args),
+    async (method, args) => {
+      requireRecoverySafe(signer, method, args);
+      if (
+        ["prepare", "approve"].includes(method) &&
+        signer.identity?.currency === "LAVE"
+      ) {
+        const { reapplyStakingLocks } = await import("../staking/runtime.mjs");
+        await reapplyStakingLocks(signer, signer.store);
+      }
+    },
   );
 }
 
@@ -101,5 +110,11 @@ export function protectWallet(service, journalPath) {
     service,
     ["status", "prepare", "approve", "cancel", "getRequest"],
     journalPath,
+    async () => {
+      if (service.signer.identity.currency === "LAVE") {
+        const { reapplyStakingLocks } = await import("../staking/runtime.mjs");
+        await reapplyStakingLocks(service.signer, service.store);
+      }
+    },
   );
 }

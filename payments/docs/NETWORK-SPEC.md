@@ -1,4 +1,4 @@
-# LAVEPAY local network profiles — v0.5
+# LAVEPAY local network profiles — v0.6
 
 This is a developer-network specification, not mainnet economics. The default
 `lave` profile runs LAVE Core built from this repository. The explicit `atlas`
@@ -50,9 +50,11 @@ on demand. The first 10,000 blocks use easy mining. The height-one allowance is
 output is unspendable. These are bootstrap conveniences, not a proposed public
 issuance policy. See [LAB.md](LAB.md).
 
-The payment lab does not configure masternodes, quorum finality, InstantSend or
-ChainLocks. A shared tip shows synchronization of local processes, not independent
-operators or economic security. Test coins have no monetary value.
+The payment profile supports wallet-managed masternodes and sixteen local
+seed masternodes. Existing quorum sizes and thresholds are preserved; activation
+and real-time bootstrap are described in [WALLET-MASTERNODES.md](WALLET-MASTERNODES.md).
+A shared tip and local quorums do not establish independent operators or economic
+security. Test coins have no monetary value.
 
 ## v0.5 custody layout
 

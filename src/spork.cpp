@@ -264,9 +264,10 @@ bool CSporkManager::IsSporkActive(SporkId nSporkID) const
 
 SporkValue CSporkManager::GetSporkValue(SporkId nSporkID) const
 {
-    // Fixed activation belongs only to the separately pinned local quorum lab.
-    // No private signing authority or override can affect the payment devnet.
-    if (Params().IsLaveQuorumLab()) {
+    // The two explicitly named LAVE development networks use a fixed policy.
+    // Upgrade all local payment nodes together; no signing authority or mutable
+    // per-node spork override can split their activation policy.
+    if (Params().IsLavePaymentDevnet() || Params().IsLaveQuorumLab()) {
         switch (nSporkID) {
         case SPORK_2_INSTANTSEND_ENABLED:
         case SPORK_3_INSTANTSEND_BLOCK_FILTERING:

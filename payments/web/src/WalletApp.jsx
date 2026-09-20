@@ -2,6 +2,7 @@ import { currencyFor, profileFor, walletStorageKey } from "./currency.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Brand from "./Brand.jsx";
 import WalletBackup from "./WalletBackup.jsx";
+import WalletMasternodes from "./WalletMasternodes.jsx";
 import {
   ArrowLeft,
   ArrowRight,
@@ -16,6 +17,7 @@ import {
   LockKeyhole,
   RefreshCw,
   ShieldCheck,
+  Server,
   Wallet,
   X,
 } from "lucide-react";
@@ -29,7 +31,8 @@ const dictionary = {
     subtitle:
       "This wallet signs only after your explicit approval on this page.",
     test: "LOCAL DEVNET · TEST COINS",
-    balance: "Confirmed balance",
+    balance: "Available balance",
+    lockedBalance: "Reserved in wallet",
     pendingBalance: "Pending balance",
     receive: "Your receiving address",
     receiveHelp:
@@ -106,7 +109,7 @@ const dictionary = {
     approveHelp:
       "Check the network, recipient, amount and fee. Clicking below explicitly authorizes this wallet to sign and broadcast this transaction.",
     localBoundary:
-      "A separate local wallet service. No mainnet funds; no InstantSend or ChainLocks.",
+      "A separate local wallet service. Local devnet and test coins only.",
     restore: "Request restored. Approval is always a separate action.",
     notCurrent:
       "The chain is unavailable. Transaction state may be out of date.",
@@ -140,7 +143,8 @@ const dictionary = {
     subtitle:
       "Кошелёк подписывает транзакцию только после вашего явного одобрения на этой странице.",
     test: "ЛОКАЛЬНАЯ DEVNET · ТЕСТОВЫЕ МОНЕТЫ",
-    balance: "Подтверждённый баланс",
+    balance: "Доступный баланс",
+    lockedBalance: "Зарезервировано в кошельке",
     pendingBalance: "Ожидающий баланс",
     receive: "Ваш адрес для получения",
     receiveHelp:
@@ -217,7 +221,7 @@ const dictionary = {
     approveHelp:
       "Проверьте сеть, получателя, сумму и комиссию. Нажатие кнопки явно разрешает этому кошельку подписать и отправить транзакцию.",
     localBoundary:
-      "Отдельный локальный сервис кошелька. Без средств основной сети, InstantSend и ChainLocks.",
+      "Отдельный локальный сервис кошелька. Локальная devnet и тестовые монеты.",
     restore:
       "Запрос восстановлен. Одобрение всегда выполняется отдельным действием.",
     notCurrent:
@@ -300,6 +304,12 @@ export default function WalletApp() {
     );
   const t = dictionary[locale] || dictionary.en;
   const [status, setStatus] = useState(null),
+    [view, setView] = useState(() =>
+      location.hash === "#masternodes" ||
+      new URLSearchParams(location.hash.slice(1)).get("view") === "masternodes"
+        ? "masternodes"
+        : "payments",
+    ),
     [review, setReview] = useState(null),
     [invoiceId, setInvoiceId] = useState(context.invoiceId),
     [requestId, setRequestId] = useState(context.requestId),
@@ -493,6 +503,20 @@ export default function WalletApp() {
       ? "http://127.0.0.1:4173/pay/" +
         encodeURIComponent(review?.invoiceId || invoiceId)
       : "http://127.0.0.1:4173/";
+  function changeView(next) {
+    setView(next);
+    const fragment = new URLSearchParams(location.hash.slice(1));
+    fragment.delete("masternodes");
+    if (next === "masternodes") fragment.set("view", next);
+    else fragment.delete("view");
+    history.replaceState(
+      null,
+      "",
+      location.pathname +
+        location.search +
+        (fragment.size ? "#" + fragment.toString() : ""),
+    );
+  }
   return (
     <div className="wallet-app">
       <header className="wallet-header">
@@ -529,7 +553,32 @@ export default function WalletApp() {
           <ArrowLeft size={13} />
           {invoiceId ? t.back : t.home}
         </a>
-        <section className="wallet-page-heading">
+        <nav
+          className="wallet-view-tabs"
+          aria-label={locale === "ru" ? "Разделы кошелька" : "Wallet sections"}
+        >
+          <button
+            type="button"
+            aria-current={view === "payments" ? "page" : undefined}
+            onClick={() => changeView("payments")}
+          >
+            <Wallet size={16} />
+            {locale === "ru" ? "Кошелёк" : "Wallet"}
+          </button>
+          <button
+            type="button"
+            aria-current={view === "masternodes" ? "page" : undefined}
+            onClick={() => changeView("masternodes")}
+          >
+            <Server size={16} />
+            {locale === "ru" ? "Мастерноды" : "Masternodes"}
+            <span>LAVE</span>
+          </button>
+        </nav>
+        <section
+          className="wallet-page-heading"
+          style={{ display: view === "payments" ? undefined : "none" }}
+        >
           <div>
             <div className="eyebrow">{t.eyebrow}</div>
             <h1>{t.title}</h1>
@@ -550,370 +599,398 @@ export default function WalletApp() {
             <button onClick={refresh}>{t.reload}</button>
           </div>
         )}
-        <div className="wallet-layout">
-          <section className="wallet-transaction">
-            <div className="wallet-card-header">
-              <span>
-                <ShieldCheck size={19} />
-                {review ? t.review : t.import}
-              </span>
-              <span className="wallet-kind">{t[kind] || kind}</span>
-            </div>
-            {loading && requestId ? (
-              <div className="loading-card">
-                <LoaderCircle className="spin" size={20} />
-                {t.checking}
+        <div style={{ display: view === "payments" ? "block" : "none" }}>
+          <div className="wallet-layout">
+            <section className="wallet-transaction">
+              <div className="wallet-card-header">
+                <span>
+                  <ShieldCheck size={19} />
+                  {review ? t.review : t.import}
+                </span>
+                <span className="wallet-kind">{t[kind] || kind}</span>
               </div>
-            ) : !review ? (
-              <div className="wallet-import">
-                <div className="wallet-empty-icon">
-                  <Wallet size={27} />
+              {loading && requestId ? (
+                <div className="loading-card">
+                  <LoaderCircle className="spin" size={20} />
+                  {t.checking}
                 </div>
-                <h2>{t.emptyTitle}</h2>
-                <p>{t.emptyBody}</p>
-                <form onSubmit={(event) => action("prepare", event)}>
-                  <label htmlFor="wallet-invoice">{t.invoice}</label>
-                  <input
-                    id="wallet-invoice"
-                    value={invoiceId}
-                    onChange={(event) => setInvoiceId(event.target.value)}
-                    maxLength={150}
-                    required
-                    autoComplete="off"
-                  />
-                  <button
-                    className="button"
-                    type="submit"
-                    disabled={!!busy || !connected || !invoiceId.trim()}
+              ) : !review ? (
+                <div className="wallet-import">
+                  <div className="wallet-empty-icon">
+                    <Wallet size={27} />
+                  </div>
+                  <h2>{t.emptyTitle}</h2>
+                  <p>{t.emptyBody}</p>
+                  <form onSubmit={(event) => action("prepare", event)}>
+                    <label htmlFor="wallet-invoice">{t.invoice}</label>
+                    <input
+                      id="wallet-invoice"
+                      value={invoiceId}
+                      onChange={(event) => setInvoiceId(event.target.value)}
+                      maxLength={150}
+                      required
+                      autoComplete="off"
+                    />
+                    <button
+                      className="button"
+                      type="submit"
+                      disabled={!!busy || !connected || !invoiceId.trim()}
+                    >
+                      {busy === "prepare" ? (
+                        <LoaderCircle size={17} className="spin" />
+                      ) : (
+                        <ArrowRight size={17} />
+                      )}{" "}
+                      {busy === "prepare" ? t.preparing : t.prepare}
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="wallet-review">
+                  {restored && (
+                    <p className="wallet-restored">
+                      <RefreshCw size={13} />
+                      {t.restore}
+                    </p>
+                  )}
+                  <div
+                    className={
+                      "wallet-lifecycle " +
+                      (confirmed
+                        ? "is-confirmed"
+                        : cancelled
+                          ? "is-cancelled"
+                          : "")
+                    }
                   >
-                    {busy === "prepare" ? (
-                      <LoaderCircle size={17} className="spin" />
-                    ) : (
-                      <ArrowRight size={17} />
-                    )}{" "}
-                    {busy === "prepare" ? t.preparing : t.prepare}
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <div className="wallet-review">
-                {restored && (
-                  <p className="wallet-restored">
-                    <RefreshCw size={13} />
-                    {t.restore}
-                  </p>
-                )}
-                <div
-                  className={
-                    "wallet-lifecycle " +
-                    (confirmed
-                      ? "is-confirmed"
-                      : cancelled
-                        ? "is-cancelled"
-                        : "")
-                  }
-                >
-                  <span className="wallet-lifecycle-icon">
-                    {confirmed ? (
-                      <ShieldCheck size={24} />
-                    ) : cancelled ? (
-                      <X size={22} />
-                    ) : (
-                      <LockKeyhole size={22} />
-                    )}
-                  </span>
-                  <div>
-                    <strong>
-                      {confirmed
-                        ? t.confirmed
-                        : review.confirmationState === "conflicted"
-                          ? t.conflicted
-                          : cancelled
-                            ? t.cancelled
-                            : review.state === "broadcast"
-                              ? t.broadcast
-                              : ready
-                                ? t.approval
-                                : stateLabel}
-                    </strong>
-                    <span>
-                      {t.stateLabel}: {stateLabel}
+                    <span className="wallet-lifecycle-icon">
+                      {confirmed ? (
+                        <ShieldCheck size={24} />
+                      ) : cancelled ? (
+                        <X size={22} />
+                      ) : (
+                        <LockKeyhole size={22} />
+                      )}
                     </span>
-                  </div>
-                </div>
-                <dl className="wallet-review-meta">
-                  <div>
-                    <dt>{t.merchantLabel}</dt>
-                    <dd>
-                      {review.merchantName || "—"}
-                      <small>{t.unverified}</small>
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>{t.description}</dt>
-                    <dd>{review.description || "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>{t.network}</dt>
-                    <dd>
-                      <span className="wallet-network-tag">{networkName}</span>
-                    </dd>
-                  </div>
-                </dl>
-                <WalletCopy label={t.recipient} value={review.address} t={t} />
-                <div className="wallet-amounts">
-                  <div>
-                    <span>{t.amount}</span>
-                    <strong>
-                      {review.amount ?? "—"} <small>{currency}</small>
-                    </strong>
-                  </div>
-                  <div>
-                    <span>{t.fee}</span>
-                    <strong>
-                      {review.fee ?? "—"} <small>{currency}</small>
-                    </strong>
-                  </div>
-                  <div className="wallet-total">
-                    <span>{t.total}</span>
-                    <strong>
-                      {review.total ?? "—"} <small>{currency}</small>
-                    </strong>
-                  </div>
-                </div>
-                <div className="wallet-change">
-                  <span>
-                    {t.change}
-                    <small>{t.changeNote}</small>
-                  </span>
-                  <strong>
-                    {review.changeAmount ?? "—"} {currency}
-                  </strong>
-                </div>
-                {review.changeAddress && (
-                  <WalletCopy
-                    label={t.changeAddress}
-                    value={review.changeAddress}
-                    t={t}
-                  />
-                )}
-                <dl className="wallet-review-meta">
-                  <div>
-                    <dt>{t.expires}</dt>
-                    <dd>
-                      {review.expiresAt
-                        ? new Date(review.expiresAt).toLocaleString(
-                            locale === "ru" ? "ru-RU" : "en-GB",
-                            { dateStyle: "medium", timeStyle: "short" },
-                          )
-                        : "—"}
-                    </dd>
-                  </div>
-                </dl>
-                <details className="wallet-technical">
-                  <summary>
-                    {t.genesis}
-                    <ChevronDown size={14} />
-                  </summary>
-                  <WalletCopy
-                    label={t.fingerprint}
-                    value={review.fingerprint}
-                    t={t}
-                  />
-                  <WalletCopy
-                    label={t.baseGenesis}
-                    value={network?.genesisHash}
-                    t={t}
-                  />
-                  <WalletCopy
-                    label={t.devnetGenesis}
-                    value={network?.devnetGenesisHash}
-                    t={t}
-                  />
-                </details>
-                {review.txid && (
-                  <div className="wallet-receipt">
-                    <WalletCopy label={t.txid} value={review.txid} t={t} />
-                    <div className="wallet-receipt-facts">
+                    <div>
+                      <strong>
+                        {confirmed
+                          ? t.confirmed
+                          : review.confirmationState === "conflicted"
+                            ? t.conflicted
+                            : cancelled
+                              ? t.cancelled
+                              : review.state === "broadcast"
+                                ? t.broadcast
+                                : ready
+                                  ? t.approval
+                                  : stateLabel}
+                      </strong>
                       <span>
-                        {t.confirmations}
-                        <strong>
-                          {review.confirmationState === "unknown"
-                            ? t.unknownLabel
-                            : (review.confirmations ?? "—")}
-                        </strong>
-                      </span>
-                      <span>
-                        {t.mempool}
-                        <strong>
-                          {typeof review.inMempool === "boolean"
-                            ? review.inMempool
-                              ? t.yes
-                              : t.no
-                            : t.unknownLabel}
-                        </strong>
+                        {t.stateLabel}: {stateLabel}
                       </span>
                     </div>
-                    {review.kind === "refund" && (
-                      <div className="wallet-sync">
-                        <strong>
-                          {t.receipt}:{" "}
-                          {review.receiptSync === "synced"
-                            ? t.receiptSynced
-                            : t.receiptPending}
-                        </strong>
-                        <p>{t.refundReceipt}</p>
-                        {review.receiptError && (
-                          <p className="error">{review.receiptError}</p>
-                        )}
+                  </div>
+                  <dl className="wallet-review-meta">
+                    <div>
+                      <dt>{t.merchantLabel}</dt>
+                      <dd>
+                        {review.merchantName || "—"}
+                        <small>{t.unverified}</small>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{t.description}</dt>
+                      <dd>{review.description || "—"}</dd>
+                    </div>
+                    <div>
+                      <dt>{t.network}</dt>
+                      <dd>
+                        <span className="wallet-network-tag">
+                          {networkName}
+                        </span>
+                      </dd>
+                    </div>
+                  </dl>
+                  <WalletCopy
+                    label={t.recipient}
+                    value={review.address}
+                    t={t}
+                  />
+                  <div className="wallet-amounts">
+                    <div>
+                      <span>{t.amount}</span>
+                      <strong>
+                        {review.amount ?? "—"} <small>{currency}</small>
+                      </strong>
+                    </div>
+                    <div>
+                      <span>{t.fee}</span>
+                      <strong>
+                        {review.fee ?? "—"} <small>{currency}</small>
+                      </strong>
+                    </div>
+                    <div className="wallet-total">
+                      <span>{t.total}</span>
+                      <strong>
+                        {review.total ?? "—"} <small>{currency}</small>
+                      </strong>
+                    </div>
+                  </div>
+                  <div className="wallet-change">
+                    <span>
+                      {t.change}
+                      <small>{t.changeNote}</small>
+                    </span>
+                    <strong>
+                      {review.changeAmount ?? "—"} {currency}
+                    </strong>
+                  </div>
+                  {review.changeAddress && (
+                    <WalletCopy
+                      label={t.changeAddress}
+                      value={review.changeAddress}
+                      t={t}
+                    />
+                  )}
+                  <dl className="wallet-review-meta">
+                    <div>
+                      <dt>{t.expires}</dt>
+                      <dd>
+                        {review.expiresAt
+                          ? new Date(review.expiresAt).toLocaleString(
+                              locale === "ru" ? "ru-RU" : "en-GB",
+                              { dateStyle: "medium", timeStyle: "short" },
+                            )
+                          : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                  <details className="wallet-technical">
+                    <summary>
+                      {t.genesis}
+                      <ChevronDown size={14} />
+                    </summary>
+                    <WalletCopy
+                      label={t.fingerprint}
+                      value={review.fingerprint}
+                      t={t}
+                    />
+                    <WalletCopy
+                      label={t.baseGenesis}
+                      value={network?.genesisHash}
+                      t={t}
+                    />
+                    <WalletCopy
+                      label={t.devnetGenesis}
+                      value={network?.devnetGenesisHash}
+                      t={t}
+                    />
+                  </details>
+                  {review.txid && (
+                    <div className="wallet-receipt">
+                      <WalletCopy label={t.txid} value={review.txid} t={t} />
+                      <div className="wallet-receipt-facts">
+                        <span>
+                          {t.confirmations}
+                          <strong>
+                            {review.confirmationState === "unknown"
+                              ? t.unknownLabel
+                              : (review.confirmations ?? "—")}
+                          </strong>
+                        </span>
+                        <span>
+                          {t.mempool}
+                          <strong>
+                            {typeof review.inMempool === "boolean"
+                              ? review.inMempool
+                                ? t.yes
+                                : t.no
+                              : t.unknownLabel}
+                          </strong>
+                        </span>
+                      </div>
+                      {review.kind === "refund" && (
+                        <div className="wallet-sync">
+                          <strong>
+                            {t.receipt}:{" "}
+                            {review.receiptSync === "synced"
+                              ? t.receiptSynced
+                              : t.receiptPending}
+                          </strong>
+                          <p>{t.refundReceipt}</p>
+                          {review.receiptError && (
+                            <p className="error">{review.receiptError}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!connected && <p className="error">{t.notCurrent}</p>}
+                  {expired && ready && <p className="error">{t.expired}</p>}
+                  {[
+                    "preparing",
+                    "preparation_uncertain",
+                    "awaiting_approval",
+                    "signing",
+                  ].includes(review.state) && (
+                    <div className="error" role="status">
+                      {t.manualState}
+                    </div>
+                  )}
+                  {ready && (
+                    <div className="wallet-approval">
+                      <p>{t.approveHelp}</p>
+                      <div>
+                        <button
+                          className="button secondary"
+                          onClick={() => action("cancel")}
+                          disabled={!!busy}
+                        >
+                          {busy === "cancel" ? (
+                            <LoaderCircle className="spin" size={16} />
+                          ) : (
+                            <X size={16} />
+                          )}{" "}
+                          {busy === "cancel" ? t.cancelling : t.cancel}
+                        </button>
+                        <button
+                          className="button"
+                          onClick={() => action("approve")}
+                          disabled={!canApprove}
+                        >
+                          {busy === "approve" ? (
+                            <LoaderCircle size={17} className="spin" />
+                          ) : (
+                            <LockKeyhole size={17} />
+                          )}{" "}
+                          {busy === "approve" ? t.signing : t.sign}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {review &&
+                    ["signed", "broadcasting", "broadcast_unknown"].includes(
+                      review.state,
+                    ) &&
+                    !confirmed && (
+                      <div className="wallet-approval">
+                        <p>{t.unknown}</p>
+                        <button
+                          className="button"
+                          disabled={!!busy || !connected}
+                          onClick={() => action("approve")}
+                        >
+                          {busy ? (
+                            <LoaderCircle size={16} className="spin" />
+                          ) : (
+                            <RefreshCw size={16} />
+                          )}{" "}
+                          {t.retryTransaction}
+                        </button>
                       </div>
                     )}
-                  </div>
-                )}
-                {!connected && <p className="error">{t.notCurrent}</p>}
-                {expired && ready && <p className="error">{t.expired}</p>}
-                {[
-                  "preparing",
-                  "preparation_uncertain",
-                  "awaiting_approval",
-                  "signing",
-                ].includes(review.state) && (
-                  <div className="error" role="status">
-                    {t.manualState}
-                  </div>
-                )}
-                {ready && (
-                  <div className="wallet-approval">
-                    <p>{t.approveHelp}</p>
-                    <div>
-                      <button
-                        className="button secondary"
-                        onClick={() => action("cancel")}
-                        disabled={!!busy}
-                      >
-                        {busy === "cancel" ? (
-                          <LoaderCircle className="spin" size={16} />
-                        ) : (
-                          <X size={16} />
-                        )}{" "}
-                        {busy === "cancel" ? t.cancelling : t.cancel}
-                      </button>
-                      <button
-                        className="button"
-                        onClick={() => action("approve")}
-                        disabled={!canApprove}
-                      >
-                        {busy === "approve" ? (
-                          <LoaderCircle size={17} className="spin" />
-                        ) : (
-                          <LockKeyhole size={17} />
-                        )}{" "}
-                        {busy === "approve" ? t.signing : t.sign}
-                      </button>
-                    </div>
-                  </div>
-                )}
-                {review &&
-                  ["signed", "broadcasting", "broadcast_unknown"].includes(
-                    review.state,
-                  ) &&
-                  !confirmed && (
-                    <div className="wallet-approval">
-                      <p>{t.unknown}</p>
-                      <button
-                        className="button"
-                        disabled={!!busy || !connected}
-                        onClick={() => action("approve")}
-                      >
-                        {busy ? (
-                          <LoaderCircle size={16} className="spin" />
-                        ) : (
-                          <RefreshCw size={16} />
-                        )}{" "}
-                        {t.retryTransaction}
+                  {broadcast && (
+                    <div className="wallet-postsend">
+                      <p>
+                        {review.state === "broadcast_unknown"
+                          ? t.unknown
+                          : confirmed
+                            ? t.confirmed
+                            : review.confirmationState === "pending"
+                              ? t.pendingHelp
+                              : t.waiting}
+                      </p>
+                      <a className="button secondary" href={backUrl}>
+                        {t.back}
+                        <ArrowRight size={16} />
+                      </a>
+                      <button className="text-button" onClick={refresh}>
+                        <RefreshCw size={14} />
+                        {t.reload}
                       </button>
                     </div>
                   )}
-                {broadcast && (
-                  <div className="wallet-postsend">
-                    <p>
-                      {review.state === "broadcast_unknown"
-                        ? t.unknown
-                        : confirmed
-                          ? t.confirmed
-                          : review.confirmationState === "pending"
-                            ? t.pendingHelp
-                            : t.waiting}
-                    </p>
-                    <a className="button secondary" href={backUrl}>
-                      {t.back}
-                      <ArrowRight size={16} />
-                    </a>
-                    <button className="text-button" onClick={refresh}>
-                      <RefreshCw size={14} />
-                      {t.reload}
-                    </button>
-                  </div>
-                )}
-                {cancelled && (
-                  <div className="wallet-postsend">
-                    <p>{t.cancelledBody}</p>
-                    <a className="button secondary" href={backUrl}>
-                      {t.back}
-                      <ArrowRight size={16} />
-                    </a>
-                  </div>
-                )}
+                  {cancelled && (
+                    <div className="wallet-postsend">
+                      <p>{t.cancelledBody}</p>
+                      <a className="button secondary" href={backUrl}>
+                        {t.back}
+                        <ArrowRight size={16} />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+              {error && (
+                <div className="error wallet-action-error" role="alert">
+                  {error}
+                </div>
+              )}
+            </section>
+            <aside className="wallet-account">
+              <div className="wallet-account-icon">
+                <Wallet size={23} />
               </div>
-            )}
-            {error && (
-              <div className="error wallet-action-error" role="alert">
-                {error}
+              <h2>{t[role]}</h2>
+              <p>{networkName}</p>
+              <div className="wallet-balance">
+                <span>{t.balance}</span>
+                <strong>
+                  {status?.availableBalance ?? status?.balance ?? "—"}{" "}
+                  <small>{balanceCurrency}</small>
+                </strong>
               </div>
-            )}
-          </section>
-          <aside className="wallet-account">
-            <div className="wallet-account-icon">
-              <Wallet size={23} />
-            </div>
-            <h2>{t[role]}</h2>
-            <p>{networkName}</p>
-            <div className="wallet-balance">
-              <span>{t.balance}</span>
-              <strong>
-                {status?.balance ?? "—"} <small>{balanceCurrency}</small>
-              </strong>
-            </div>
-            <div className="wallet-pending-balance">
-              <span>{t.pendingBalance}</span>
-              <strong>
-                {status?.pendingBalance ?? "—"} {balanceCurrency}
-              </strong>
-            </div>
-            <WalletCopy
-              label={t.receive}
-              value={status?.receiveAddress}
-              t={t}
-            />
-            <p className="wallet-receive-help">
-              {t.receiveHelp.replace("{currency}", balanceCurrency)}
-            </p>
-            <div className="wallet-boundary">
-              <ShieldCheck size={17} />
-              <p>{t.signerHelp}</p>
-            </div>
-            <a href="http://127.0.0.1:4173/#network" className="checkout-link">
-              {t.network}
-              <ExternalLink size={14} />
-            </a>
-            <WalletBackup
-              locale={locale}
-              csrfToken={status?.csrfToken}
-              connected={connected}
-              currency={balanceCurrency}
-            />
-          </aside>
+              {status?.lockedBalance != null && (
+                <div className="wallet-pending-balance">
+                  <span>{t.lockedBalance}</span>
+                  <strong>
+                    {status.lockedBalance} {balanceCurrency}
+                  </strong>
+                </div>
+              )}
+              <div className="wallet-pending-balance">
+                <span>{t.pendingBalance}</span>
+                <strong>
+                  {status?.pendingBalance ?? "—"} {balanceCurrency}
+                </strong>
+              </div>
+              <WalletCopy
+                label={t.receive}
+                value={status?.receiveAddress}
+                t={t}
+              />
+              <p className="wallet-receive-help">
+                {t.receiveHelp.replace("{currency}", balanceCurrency)}
+              </p>
+              <div className="wallet-boundary">
+                <ShieldCheck size={17} />
+                <p>{t.signerHelp}</p>
+              </div>
+              <a
+                href="http://127.0.0.1:4173/#network"
+                className="checkout-link"
+              >
+                {t.network}
+                <ExternalLink size={14} />
+              </a>
+              <WalletBackup
+                locale={locale}
+                csrfToken={status?.csrfToken}
+                connected={connected}
+                currency={balanceCurrency}
+              />
+            </aside>
+          </div>
         </div>
+        <WalletMasternodes
+          active={view === "masternodes"}
+          locale={locale}
+          walletStatus={status}
+          connected={connected}
+          csrfToken={status?.csrfToken}
+          onWalletRefresh={refresh}
+        />
         <footer className="wallet-footer">
           <FlaskConical size={14} />
           {t.localBoundary}

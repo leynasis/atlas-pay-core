@@ -1,10 +1,12 @@
-# LAVEPAY four-node payment lab — v0.5
+# LAVEPAY four-node payment lab — v0.6
 
 The default LAVE lab runs four role-specific Core processes on **one computer**.
 It uses the locally compiled LAVE Core client and the pinned `lave-local-v1`
 chain. The explicit Atlas profile retains its original three official Dash
 nodes, `atlas-local-v1` history and test-DASH balances. Both are valueless local
-experiments. Payment-chain InstantSend and ChainLocks remain disabled.
+experiments. The optional [payment masternodes](PAYMENT-MASTERNODES.md) extend
+this chain with sixteen seed operators and actual quorum evidence; the wallets
+can also [manage a local masternode](WALLET-MASTERNODES.md).
 
 The separate nine-node [LAVE-Q lab](MASTERNODES.md) exercises masternodes and
 quorums on a different chain, with separate ports and state. Starting it does

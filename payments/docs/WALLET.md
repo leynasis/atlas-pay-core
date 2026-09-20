@@ -1,4 +1,10 @@
-# Separate local wallets — v0.5
+# Separate local wallets — v0.6
+
+Both wallet roles include the [masternode workflow](WALLET-MASTERNODES.md):
+separate collateral and registration approvals, persistent reservations, local
+node controls, observed rewards, and reviewed collateral return. The encrypted
+wallet journal also contains the managed node's BLS operator key. Recovery
+blocks fresh masternode mutations as well as fresh payment signatures.
 
 The customer wallet runs at `http://127.0.0.1:4174`; the merchant refund wallet
 runs at `http://127.0.0.1:4175`. Both use the selected pinned payment profile:

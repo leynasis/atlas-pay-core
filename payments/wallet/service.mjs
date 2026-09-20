@@ -108,7 +108,7 @@ export class WalletService {
   }
   async status() {
     const chain = await this.signer.checkNetwork();
-    const [balance, balances] = await Promise.all([
+    const [balance, balances, spendable] = await Promise.all([
       this.signer.rpc(
         this.role,
         "getbalance",
@@ -116,8 +116,22 @@ export class WalletService {
         this.role,
       ),
       this.signer.rpc(this.role, "getbalances", [], this.role),
+      this.signer.rpc(
+        this.role,
+        "listunspent",
+        [1, 9999999, [], false],
+        this.role,
+      ),
     ]);
     const confirmed = rpcAmount(balance);
+    const available = spendable
+      .filter((coin) => coin.spendable === true && coin.safe === true)
+      .reduce((sum, coin) => sum + rpcAmount(coin.amount), 0n);
+    requirePolicy(
+      available <= confirmed,
+      "BALANCE_CHANGED",
+      "The wallet balance changed during refresh. Refresh again.",
+    );
     // Dash's trusted balance includes our own unconfirmed change. Subtract
     // the explicitly confirmed balance before adding external pending funds.
     const trusted = rpcAmount(balances.mine.trusted);
@@ -178,6 +192,8 @@ export class WalletService {
       profile: this.signer.identity.currency === "LAVE" ? "lave" : "atlas",
       devnetName: this.signer.identity.devnetName,
       balance: formatAmount(confirmed),
+      availableBalance: formatAmount(available),
+      lockedBalance: formatAmount(confirmed - available),
       pendingBalance: formatAmount(pending),
       receiveAddress,
       chainAvailable: true,

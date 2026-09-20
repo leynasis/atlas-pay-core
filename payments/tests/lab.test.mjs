@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   PROFILE_CONFIG,
+  PROFILE,
   LAB_DIR,
   DEVNET_GENESIS_HASH,
   EXPECTED_CHAIN,
@@ -86,6 +87,35 @@ test("node guard fails closed for wrong genesis and missing network flag", async
   networkactive = false;
   await assert.rejects(inspectNode("miner", transport), /P2P/);
   await inspectNode("miner", transport, { allowInactive: true });
+});
+
+test("payment masternodes are confined to exact service ports and the payment chain", () => {
+  const peer = {
+    inbound: false,
+    subver: `/LAVE Core:23.1.8(devnet.${EXPECTED_CHAIN})/`,
+  };
+  for (const port of [20211, 20212, 20401, 20416]) {
+    const check = () =>
+      verifyPeers("miner", [{ ...peer, addr: `127.0.0.1:${port}` }]);
+    if (PROFILE === "lave") assert.doesNotThrow(check);
+    else assert.throws(check, /isolation/);
+  }
+  for (const port of [20112, 20210, 20213, 20400, 20417])
+    assert.throws(
+      () => verifyPeers("miner", [{ ...peer, addr: `127.0.0.1:${port}` }]),
+      /isolation/,
+    );
+  assert.throws(
+    () =>
+      verifyPeers("miner", [
+        {
+          ...peer,
+          addr: "127.0.0.1:20211",
+          subver: "/LAVE Core:23.1.8(devnet.devnet-lave-quorum-v1)/",
+        },
+      ]),
+    /isolation/,
+  );
 });
 
 test("unfinished local handshakes fail closed without masking invalid peers", () => {

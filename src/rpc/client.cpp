@@ -270,6 +270,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "protx register_prepare_evo", 3, "coreP2PAddrs", true },
     { "protx register_prepare_evo", 10, "platformP2PAddrs", true },
     { "protx register_prepare_evo", 11, "platformHTTPSAddrs", true },
+    { "protx register_submit", 3, "submit" },
     { "protx update_service", 2, "coreP2PAddrs", true },
     { "protx update_service_evo", 2, "coreP2PAddrs", true },
     { "protx update_service_evo", 5, "platformP2PAddrs", true },

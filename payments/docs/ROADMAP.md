@@ -23,10 +23,24 @@ checksums. Name, domain and trademark availability remain unverified.
 - Password-encrypted Core-wallet and signing-journal exports, plus CLI extraction into a new directory with new signatures blocked.
 - A separate nine-node LAVE-Q lab with eight local masternodes, used to validate inherited quorum behavior independently of the payment chain.
 
-The payment chain still has no active InstantSend or ChainLocks. See
+At v0.5 the payment chain had no active InstantSend or ChainLocks. See
 [MASTERNODES.md](MASTERNODES.md) for the separate experiment's exact evidence and
 [VALIDATION-V05.md](VALIDATION-V05.md) for v0.5 checks. Local processes under one
 host owner are not independent operators or customer-controlled custody.
+
+## Implemented in v0.6 — payment-network masternodes
+
+Wallets now prepare and explicitly approve collateral and registration in two
+stages, reserve exact 1000-LAVE outputs, control one local node per role, and
+retire via a reviewed collateral self-spend. Signed-byte replay and reorganization
+reconciliation preserve transaction identity. Operator keys are included in the
+encrypted wallet journal. Status separates mature and immature actual payouts.
+
+Sixteen local seed masternodes bootstrap the existing payment chain's unchanged
+quorum parameters. The payment profile enables the relevant fixed local sporks
+while preserving both genesis hashes, addresses and its real clock. The cashier
+reads sanitized, freshness-checked evidence from that chain. Public decentralized
+operation and production economics remain future milestones.
 
 ## Next payment milestone — authenticated use and deliberate recovery
 
@@ -41,8 +55,8 @@ integration. Isolate merchant signing beyond the cashier's macOS sandbox, and
 provide equivalent enforced deployment boundaries on supported platforms.
 Keep fresh signatures blocked for recovered snapshots until later payments,
 UTXOs and journal state have been reconciled through a reviewed recovery
-procedure. Back up merchant accounting and operator keys separately from the
-existing signing-wallet export.
+procedure. Back up merchant accounting and seed/LAVE-Q operator keys separately;
+wallet-managed operator keys are part of the signing-wallet export.
 
 Acceptance requires an end-to-end payment/refund with authenticated principals,
 rejection of forged merchant requests and cross-account access, preserved exact

@@ -19,6 +19,7 @@ import {
 } from "./crypto.mjs";
 import { withWalletGate } from "./gate.mjs";
 import { networkProfile, profileIdentity } from "../lab/profiles.mjs";
+import { validateStakingJournal } from "../staking/backup.mjs";
 
 const PINNED_NETWORK = profileIdentity(networkProfile("lave"));
 
@@ -54,13 +55,14 @@ async function boundedRead(path) {
   return readFile(path);
 }
 
-export function validateJournal(db, network) {
+export function validateJournal(db, network, role) {
   const integrity = db.prepare("PRAGMA quick_check").all();
   requireBackup(
     integrity.length === 1 && Object.values(integrity[0])[0] === "ok",
     "INVALID_BACKUP",
     "Signing journal integrity check failed.",
   );
+  validateStakingJournal(db, network, role);
   const rows = db
     .prepare("SELECT id,hash,state,data FROM requests LIMIT 10001")
     .all();
@@ -150,7 +152,7 @@ export async function createWalletBackup({
       "BACKUP_WALLET_UNSUPPORTED",
       "Backup requires an idle descriptor signing wallet with private keys.",
     );
-    const records = validateJournal(store.db, signer.identity);
+    const records = validateJournal(store.db, signer.identity, signer.role);
     const workspace = await mkdtemp(
       join(dirname(resolve(journalPath)), ".backup-"),
     );
@@ -281,7 +283,7 @@ export async function restoreWalletBackup({
         "A snapshot cannot account for payments made after its creation. New signatures remain blocked.",
     };
     try {
-      records = validateJournal(db, network);
+      records = validateJournal(db, network, role);
       db.exec(
         "PRAGMA synchronous=FULL; CREATE TABLE IF NOT EXISTS backup_recovery(id INTEGER PRIMARY KEY CHECK(id=1),data TEXT NOT NULL);",
       );

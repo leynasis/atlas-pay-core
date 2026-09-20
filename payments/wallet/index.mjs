@@ -5,9 +5,10 @@ const role = process.argv[2];
 if (!["customer", "merchant"].includes(role))
   throw new Error("Usage: node wallet/index.mjs customer|merchant");
 const port = role === "customer" ? 4174 : 4175;
-const { service, store } = await openWallet(role);
+const { service, staking, store } = await openWallet(role);
 const server = createWalletServer({
   service,
+  staking,
   role,
   journalPath: store.path,
   staticDir: fileURLToPath(new URL("../web/dist", import.meta.url)),

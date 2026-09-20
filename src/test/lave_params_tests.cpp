@@ -7,10 +7,12 @@
 #include <chainparamsbase.h>
 #include <key_io.h>
 #include <pow.h>
+#include <rpc/client.h>
 #include <spork.h>
 #include <test/util/setup_common.h>
 #include <util/message.h>
 #include <util/system.h>
+#include <univalue.h>
 
 #include <algorithm>
 #include <array>
@@ -58,11 +60,55 @@ BOOST_AUTO_TEST_CASE(pinned_chain_identity)
     BOOST_CHECK_EQUAL(consensus.nHighSubsidyBlocks, 1);
     BOOST_CHECK_EQUAL(consensus.nHighSubsidyFactor, 1);
     BOOST_CHECK_EQUAL(MESSAGE_MAGIC, "LAVE Signed Message:\n");
+    BOOST_CHECK(params.IsLavePaymentDevnet());
     BOOST_CHECK(!params.IsLaveQuorumLab());
+    BOOST_CHECK(!params.IsMockableChain());
+    BOOST_CHECK(!params.RequireRoutableExternalIP());
+    BOOST_CHECK_EQUAL(params.LLMQConnectionRetryTimeout(), 5);
+    BOOST_CHECK_EQUAL(params.Base58Prefix(CChainParams::PUBKEY_ADDRESS).front(), 48);
+    BOOST_CHECK_EQUAL(params.Base58Prefix(CChainParams::SCRIPT_ADDRESS).front(), 63);
+    BOOST_CHECK_EQUAL(params.Base58Prefix(CChainParams::SECRET_KEY).front(), 181);
     CSporkManager sporks;
-    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_17_QUORUM_DKG_ENABLED), 4070908800ULL);
-    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_2_INSTANTSEND_ENABLED), 4070908800ULL);
-    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_19_CHAINLOCKS_ENABLED), 4070908800ULL);
+    for (const auto id : {SPORK_2_INSTANTSEND_ENABLED, SPORK_3_INSTANTSEND_BLOCK_FILTERING,
+                          SPORK_17_QUORUM_DKG_ENABLED, SPORK_19_CHAINLOCKS_ENABLED,
+                          SPORK_21_QUORUM_ALL_CONNECTED, SPORK_23_QUORUM_POSE}) {
+        BOOST_CHECK_EQUAL(sporks.GetSporkValue(id), 0);
+    }
+    BOOST_CHECK_EQUAL(sporks.GetSporkValue(SPORK_9_SUPERBLOCKS_ENABLED), 4070908800ULL);
+    const auto cl = params.GetLLMQ(consensus.llmqTypeChainLocks);
+    const auto is = params.GetLLMQ(consensus.llmqTypeDIP0024InstantSend);
+    BOOST_REQUIRE(cl.has_value());
+    BOOST_REQUIRE(is.has_value());
+    BOOST_CHECK(cl->type == Consensus::LLMQType::LLMQ_DEVNET);
+    BOOST_CHECK_EQUAL(cl->size, 12);
+    BOOST_CHECK_EQUAL(cl->minSize, 7);
+    BOOST_CHECK_EQUAL(cl->threshold, 6);
+    BOOST_CHECK_EQUAL(cl->signingActiveQuorumCount, 4);
+    BOOST_CHECK_EQUAL(cl->dkgInterval, 24);
+    BOOST_CHECK(is->type == Consensus::LLMQType::LLMQ_DEVNET_DIP0024);
+    BOOST_CHECK_EQUAL(is->size, 8);
+    BOOST_CHECK_EQUAL(is->minSize, 6);
+    BOOST_CHECK_EQUAL(is->threshold, 4);
+    BOOST_CHECK_EQUAL(is->signingActiveQuorumCount, 2);
+    BOOST_CHECK_EQUAL(is->dkgInterval, 48);
+    BOOST_CHECK(is->useRotation);
+}
+
+BOOST_AUTO_TEST_CASE(register_submit_cli_preserves_explicit_no_broadcast)
+{
+    const auto positional = RPCConvertValues("protx", {"register_submit", "00", "AA==", "false"});
+    BOOST_CHECK_EQUAL(positional[0].get_str(), "register_submit");
+    BOOST_CHECK_EQUAL(positional[1].get_str(), "00");
+    BOOST_CHECK_EQUAL(positional[2].get_str(), "AA==");
+    BOOST_REQUIRE(positional[3].isBool());
+    BOOST_CHECK(!positional[3].get_bool());
+    const auto named = RPCConvertNamedValues("protx", {"register_submit", "tx=00", "sig=AA==", "submit=false"});
+    BOOST_REQUIRE(named["submit"].isBool());
+    BOOST_CHECK(!named["submit"].get_bool());
+    BOOST_CHECK_EQUAL(named["tx"].get_str(), "00");
+    BOOST_CHECK_EQUAL(named["sig"].get_str(), "AA==");
+    const auto original = RPCConvertValues("protx", {"register_submit", "00", "AA=="});
+    BOOST_CHECK_EQUAL(original.size(), 3);
 }
 
 BOOST_AUTO_TEST_CASE(address_and_key_domains)
@@ -140,6 +186,7 @@ BOOST_FIXTURE_TEST_CASE(isolated_quorum_identity_and_activation, LaveQuorumTesti
 {
     const auto& params = Params();
     BOOST_CHECK(params.IsLaveQuorumLab());
+    BOOST_CHECK(!params.IsLavePaymentDevnet());
     BOOST_CHECK(params.IsMockableChain());
     BOOST_CHECK(!params.RequireRoutableExternalIP());
     BOOST_CHECK_EQUAL(params.GetConsensus().hashGenesisBlock.GetHex(), "3db65802980f975c71d3c4e095a0d45304b4e419a09fd2182aee54cb3eaed4de");

@@ -40,7 +40,7 @@ node masternodes/index.mjs stop
 
 RPC and P2P listeners bind to `127.0.0.1`. DNS seeding, fixed seeds, discovery, Tor listening, UPnP and NAT-PMP are disabled. The controller uses `connect=0`; masternodes must leave `connect` unset because upstream Core disables its masternode connection worker whenever `-connect` is supplied. They discover quorum peers from the locally registered deterministic list. Every lifecycle mutation checks both genesis hashes and rejects observed non-lab peers.
 
-The existing `lave-local-v1` payment chain, its addresses, genesis, spork defaults, quorums, wallet and runtime are unchanged. The old Atlas/Dash laboratory is also separate. Core accepts only the two explicit LAVE devnet names; Dash mainnet, testnet and regtest remain refused.
+The v0.6 `lave-local-v1` payment chain has its own [wallet-managed masternodes](WALLET-MASTERNODES.md). Its addresses, genesis and quorum parameters remain unchanged; its local activation policy now enables the same six features. The old Atlas/Dash laboratory is also separate. Core accepts only the two explicit LAVE devnet names; Dash mainnet, testnet and regtest remain refused.
 
 ## Quorums and activation
 
@@ -51,7 +51,7 @@ The existing `lave-local-v1` payment chain, its addresses, genesis, spork defaul
 
 Cycles span 24 blocks. The launcher waits for authenticated quorum connections and real contribution/commitment messages; it does not inject quorum commitments or fabricate signatures. Eight distinct operator keys provide the population for the two rotating quorums. The Platform test quorum type is present in Core parameters, but no Platform service or EvoNode is deployed or claimed.
 
-Only `lave-quorum-v1` has fixed activation of SPORK 2 (InstantSend), 3 (InstantSend block filtering), 17 (DKG), 19 (ChainLocks), 21 (all quorum members connected) and 23 (PoSe). There is no spork authority key. Superblocks remain disabled. The old LAVE payment profile retains its previous inactive defaults. This new profile permits a test mock clock and non-routable loopback masternode services. No PoW, emission, BLS, DKG or signature algorithm is replaced.
+Both explicitly named local LAVE profiles have fixed activation of SPORK 2 (InstantSend), 3 (InstantSend block filtering), 17 (DKG), 19 (ChainLocks), 21 (all quorum members connected) and 23 (PoSe). There is no spork authority key. Superblocks remain disabled. Only the LAVE-Q profile permits a test mock clock; both profiles permit loopback masternode services. No PoW, emission, BLS, DKG or signature algorithm is replaced.
 
 ## Status and credentials
 

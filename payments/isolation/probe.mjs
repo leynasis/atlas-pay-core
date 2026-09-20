@@ -40,7 +40,7 @@ const child = spawnSync(
 );
 assert.equal(child.status, 0, child.stderr);
 checks++;
-for (const port of [4174, 4175, 20101, 443]) {
+for (const port of [4174, 4175, 20101, 20201, 20202, 20301, 20316, 443]) {
   await assert.rejects(
     fetch("http://127.0.0.1:" + port, { signal: AbortSignal.timeout(2000) }),
     (e) => denied(e.cause || e),

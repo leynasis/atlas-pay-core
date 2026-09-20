@@ -9,6 +9,7 @@ import {
   MERCHANT_API_METHODS,
   MERCHANT_API_CREDENTIALS_PATH,
   NODES,
+  MASTERNODE_P2P_PORTS,
   READ_ONLY_METHODS,
   getNode,
 } from "./config.mjs";
@@ -142,7 +143,8 @@ export function verifyPeers(nodeId, peers) {
   if (!Array.isArray(peers)) throw new Error("Invalid lab peer response.");
   const expectedDestinations = Object.values(NODES)
     .filter((node) => node.id !== nodeId)
-    .map((node) => `127.0.0.1:${node.p2pPort}`);
+    .map((node) => `127.0.0.1:${node.p2pPort}`)
+    .concat(MASTERNODE_P2P_PORTS.map((port) => `127.0.0.1:${port}`));
   let handshakePending = false;
   for (const peer of peers) {
     // An incoming TCP source port is ephemeral, not the peer's listening port.

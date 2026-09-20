@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { SIGNER_DIR, CURRENCY } from "../lab/config.mjs";
+import { SIGNER_DIR, CURRENCY, PROFILE } from "../lab/config.mjs";
 import { CustomerSigner, createPaymentRequest } from "../signer/service.mjs";
 import { SignerStore } from "../signer/store.mjs";
 import {
@@ -226,6 +226,29 @@ try {
     const block = await rpc("miner", "getblock", [tx.blockhash, 1]);
     return block.confirmations > 0 && block.tx.includes(result.txid);
   }, "Customer transaction did not reach miner");
+  if (PROFILE === "lave")
+    await waitUntil(async () => {
+      try {
+        const entry = await rpc("miner", "getmempoolentry", [result.txid]);
+        // The activated block filter may observe relay before the IS signature.
+        // Core returns this particular field as a string, not a JSON boolean.
+        return (
+          entry.instantlock === "true" ||
+          entry.instantlock === true ||
+          (Number.isInteger(entry.time) &&
+            Date.now() - entry.time * 1000 >= 600_000)
+        );
+      } catch (error) {
+        if (error.code !== -5) throw error;
+        const tx = await rpc(
+          "customer",
+          "gettransaction",
+          [result.txid],
+          "customer",
+        );
+        return tx.confirmations >= 1;
+      }
+    }, "Payment is not ready for mining; start the LAVE payment masternodes and retry.");
   await mineBlocks(1);
   await waitUntil(async () => {
     try {

@@ -7,6 +7,7 @@ import {
   realpath,
   rm,
   writeFile,
+  access,
 } from "node:fs/promises";
 import { join } from "node:path";
 import { cashierProfile, paymentsRoot } from "../isolation/profile.mjs";
@@ -26,6 +27,19 @@ await writeFile(secret, "synthetic secret; never a real wallet", {
 });
 try {
   const profile = cashierProfile({ data: await realpath(writable) });
+  const optionalPaths = [
+    join(paymentsRoot, ".runtime/lave/staking/customer/node/lave.conf"),
+    join(paymentsRoot, ".runtime/lave/payment-masternodes/state.json"),
+  ];
+  const existingPrivatePaths = [];
+  for (const path of optionalPaths) {
+    try {
+      await access(path);
+      existingPrivatePaths.push(path);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
   const spec = {
     secret,
     writable,
@@ -33,6 +47,8 @@ try {
       NODES.customer.cookiePath,
       NODES.signer?.cookiePath || NODES.merchant.cookiePath,
       join(SIGNER_DIR, "customer.sqlite"),
+      join(SIGNER_DIR, "merchant.sqlite"),
+      ...existingPrivatePaths,
     ],
   };
   const result = await new Promise((resolve, reject) => {
